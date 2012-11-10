@@ -11,6 +11,7 @@
 #include "Elements.h"
 //#include "ElementFunctions.h"
 #include "Air.h"
+#include "TimeField.h"
 #include "Gravity.h"
 #include "elements/Element.h"
 
@@ -247,7 +248,7 @@ GameSave * Simulation::Save(int fullX, int fullY, int fullX2, int fullY2)
 			}
 		}
 	}
-	
+
 	for(int i = 0; i < MAXSIGNS && i < signs.size(); i++)
 	{
 		if(signs[i].text.length() && signs[i].x >= fullX && signs[i].y >= fullY && signs[i].x <= fullX2 && signs[i].y <= fullY2)
@@ -258,7 +259,7 @@ GameSave * Simulation::Save(int fullX, int fullY, int fullX2, int fullY2)
 			*newSave << tempSign;
 		}
 	}
-	
+
 	for(int saveBlockX = 0; saveBlockX < newSave->blockWidth; saveBlockX++)
 	{
 		for(int saveBlockY = 0; saveBlockY < newSave->blockHeight; saveBlockY++)
@@ -398,16 +399,16 @@ int Simulation::flood_prop_2(int x, int y, size_t propoffset, void * propvalue, 
 			case StructProperty::Float:
 				*((float*)(((char*)&parts[i>>8])+propoffset)) = *((float*)propvalue);
 				break;
-				
+
 			case StructProperty::ParticleType:
 			case StructProperty::Integer:
 				*((int*)(((char*)&parts[i>>8])+propoffset)) = *((int*)propvalue);
 				break;
-				
+
 			case StructProperty::UInteger:
 				*((unsigned int*)(((char*)&parts[i>>8])+propoffset)) = *((unsigned int*)propvalue);
 				break;
-				
+
 			default:
 				break;
 		}
@@ -784,7 +785,7 @@ void Simulation::ApplyDecoration(int x, int y, int colR_, int colG_, int colB_, 
 	else if (mode == DECO_SMUDGE)
 	{
 		float tas = 0.0f, trs = 0.0f, tgs = 0.0f, tbs = 0.0f;
-		
+
 		int rx, ry;
 		float num = 0;	
 		for (rx=-2; rx<3; rx++)
@@ -3242,6 +3243,8 @@ void Simulation::update_particles_i(int start, int inc)
 	unsigned int elem_properties;
 	float pGravX, pGravY, pGravD;
 	int excessive_stacking_found = 0;
+	float tmf,tmfr;
+	int tmi,tr;
 
 	currentTick++;
 
@@ -3590,6 +3593,16 @@ void Simulation::update_particles_i(int start, int inc)
 			if (bmap[y/CELL][x/CELL]==WL_DETECT && emap[y/CELL][x/CELL]<8)
 				set_emap(x/CELL, y/CELL);
 
+            tmfr=pow(1.2f,timefld->field[y/CELL][x/CELL]);
+			if(t==PT_IRON)
+                tmi=1;
+            else{
+                tmi=(int)tmfr;
+                tmf=tmfr-tmi;
+                if(tmf>(float)rand()/(float)RAND_MAX)
+                    tmi++;
+            }
+            for(tr=0;tr<tmi;tr++){
 			//adding to velocity from the particle's velocity
 			vx[y/CELL][x/CELL] = vx[y/CELL][x/CELL]*elements[t].AirLoss + elements[t].AirDrag*parts[i].vx;
 			vy[y/CELL][x/CELL] = vy[y/CELL][x/CELL]*elements[t].AirLoss + elements[t].AirDrag*parts[i].vy;
@@ -4131,7 +4144,7 @@ void Simulation::update_particles_i(int start, int inc)
 #if !defined(RENDERER) && defined(LUACONSOLE)
 			if (elements[t].Update && lua_el_mode[t] != 2)
 #else
-			if (elements[t].Update)
+                if (elements[t].Update)
 #endif
 			{
 				if ((*(elements[t].Update))(this, i, x, y, surround_space, nt, parts, pmap))
@@ -4163,7 +4176,8 @@ killed:
 
 			if (!parts[i].vx&&!parts[i].vy)//if its not moving, skip to next particle, movement code it next
 				continue;
-
+            parts[i].vx*=tmfr;
+            parts[i].vy*=tmfr;
 			mv = fmaxf(fabsf(parts[i].vx), fabsf(parts[i].vy));
 			if (mv < ISTP)
 			{
@@ -4249,7 +4263,7 @@ killed:
 					if (parts[i].flags&FLAG_SKIPMOVE)
 					{
 						parts[i].flags &= ~FLAG_SKIPMOVE;
-						continue;
+						goto movedone;
 					}
 
 					rt = pmap[fin_y][fin_x] & 0xFF;
@@ -4303,7 +4317,7 @@ killed:
 				else if (!do_move(i, x, y, fin_xf, fin_yf))
 				{
 					if (parts[i].type == PT_NONE)
-						continue;
+						goto movedone;
 					// reflection
 					parts[i].flags |= FLAG_STAGNANT;
 					if (t==PT_NEUT && 100>(rand()%1000))
@@ -4365,7 +4379,7 @@ killed:
 				if (!do_move(i, x, y, fin_xf, fin_yf))
 				{
 					if (parts[i].type == PT_NONE)
-						continue;
+						goto movedone;
 					// can't move there, so bounce off
 					// TODO
 					// TODO: Work out what previous TODO was for
@@ -4399,7 +4413,7 @@ killed:
 				if (!do_move(i, x, y, fin_xf, fin_yf))
 				{
 					if (parts[i].type == PT_NONE)
-						continue;
+						goto movedone;
 					if (fin_x!=x && do_move(i, x, y, fin_xf, clear_yf))
 					{
 						parts[i].vx *= elements[t].Collision;
@@ -4622,8 +4636,11 @@ killed:
 				}
 			}
 movedone:
+            parts[i].vx/=tmfr;
+            parts[i].vy/=tmfr;
 			continue;
 		}
+	}
 }
 
 int Simulation::GetParticleType(std::string type)
@@ -4657,6 +4674,7 @@ void Simulation::update_particles()//doesn't update the particles themselves, bu
 	if(!sys_pause||framerender)
 	{
 		air->update_air();
+		timefld->update_time();
 
 		if(aheat_enable)
 			air->update_airh();
@@ -4780,8 +4798,8 @@ Simulation::Simulation():
 {
     int tportal_rx[] = {-1, 0, 1, 1, 1, 0,-1,-1};
     int tportal_ry[] = {-1,-1,-1, 0, 1, 1, 1, 0};
-    
-    memcpy(portal_rx, tportal_rx, sizeof(tportal_rx));   
+
+    memcpy(portal_rx, tportal_rx, sizeof(tportal_rx));
     memcpy(portal_ry, tportal_ry, sizeof(tportal_ry));
 
     currentTick = 0;
@@ -4800,6 +4818,7 @@ Simulation::Simulation():
 
 	//Create and attach air simulation
 	air = new Air(*this);
+	timefld = new TimeField();
 	//Give air sim references to our data
 	air->bmap = bmap;
 	air->emap = emap;
@@ -4836,7 +4855,7 @@ Simulation::Simulation():
 		else
 			elements[i] = Element();
 	}
-	
+
 	tools = GetTools();
 
 	int golRulesCount;
