@@ -564,7 +564,7 @@ VideoBuffer * Renderer::WallIcon(int wallID, int width, int height)
 			for (i=0; i<(width/4)+j; i++)
 			{
 				if (!(i&j&1))
-					newTexture->SetPixel(i, j, PIXR(pc), PIXG(pc), PIXB(pc), 255);	
+					newTexture->SetPixel(i, j, PIXR(pc), PIXG(pc), PIXB(pc), 255);
 			}
 			for (; i<width; i++)
 			{
@@ -596,7 +596,7 @@ VideoBuffer * Renderer::WallIcon(int wallID, int width, int height)
 			for (; i<width; i++)
 			{
 				if (!(i&j&1))
-					newTexture->SetPixel(i, j, PIXR(pc), PIXG(pc), PIXB(pc), 255);	
+					newTexture->SetPixel(i, j, PIXR(pc), PIXG(pc), PIXB(pc), 255);
 			}
 		}
 	}
@@ -862,11 +862,11 @@ void Renderer::DrawSigns()
 				}
 				drawtext(x+3, y+3, buff, 0, 191, 255, 255);
 			}
-			else 
+			else
 			{
 				drawtext(x+3, y+3, signs[i].text, 255, 255, 255, 255);
 			}
-				
+
 			x = signs[i].x;
 			y = signs[i].y;
 			dx = 1 - signs[i].ju;
@@ -2122,19 +2122,20 @@ void Renderer::draw_air()
 		return;
 	int x, y, i, j;
 	float (*pv)[XRES/CELL] = sim->air->pv;
-	float (*hv)[XRES/CELL] = sim->air->hv;
+    float (*hv)[XRES/CELL] = sim->air->hv;
 	float (*vx)[XRES/CELL] = sim->air->vx;
 	float (*vy)[XRES/CELL] = sim->air->vy;
+	float (*tm)[XRES/CELL] = sim->timefld->field;
 	pixel c;
 	for (y=0; y<YRES/CELL; y++)
 		for (x=0; x<XRES/CELL; x++)
 		{
 			if (display_mode & DISPLAY_AIRP)
 			{
-				if (pv[y][x] > 0.0f)
-					c  = PIXRGB(clamp_flt(pv[y][x], 0.0f, 8.0f), 0, 0);//positive pressure is red!
+				if (tm[y][x] > 0.0f)
+					c  = PIXRGB(clamp_flt(tm[y][x], 0.0f, 8.0f), 0, 0);//positive pressure is red!//
 				else
-					c  = PIXRGB(0, 0, clamp_flt(-pv[y][x], 0.0f, 8.0f));//negative pressure is blue!
+					c  = PIXRGB(0, 0, clamp_flt(-tm[y][x], 0.0f, 8.0f));//negative pressure is blue!
 			}
 			else if (display_mode & DISPLAY_AIRV)
 			{
@@ -2290,7 +2291,7 @@ pixel Renderer::GetPixel(int x, int y)
 	if (x<0 || y<0 || x>=VIDXRES || y>=VIDYRES)
 		return 0;
 #ifdef OGLR
-	return 0;	
+	return 0;
 #else
 	return vid[(y*VIDXRES)+x];
 #endif
@@ -2541,12 +2542,12 @@ Renderer::Renderer(Graphics * g, Simulation * sim):
 	glEnable(GL_TEXTURE_2D);
 	glGenTextures(1, &textTexture);
 	glBindTexture(GL_TEXTURE_2D, textTexture);
-	
+
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	
+
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDisable(GL_TEXTURE_2D);
 
@@ -2677,7 +2678,7 @@ unsigned int Renderer::GetColourMode()
 VideoBuffer Renderer::DumpFrame()
 {
 #ifdef OGLR
-#elif defined(OGLI) 
+#elif defined(OGLI)
 	VideoBuffer newBuffer(XRES, YRES);
 	std::copy(vid, vid+(XRES*YRES), newBuffer.Buffer);
 	return newBuffer;

@@ -15,6 +15,7 @@
 #include "Elements.h"
 #include "SimulationData.h"
 #include "Sign.h"
+#include "TimeField.h"
 #include "Particle.h"
 #include "Player.h"
 #include "WallType.h"
@@ -45,6 +46,7 @@ public:
 
 	Gravity * grav;
 	Air * air;
+	TimeField * timefld;
 
 	std::vector<sign> signs;
 	Element elements[PT_NUM];
@@ -172,7 +174,7 @@ public:
 	int ToolBrush(int x, int y, int tool, Brush * cBrush, float strength = 1.0f);
 	void ToolLine(int x1, int y1, int x2, int y2, int tool, Brush * cBrush, float strength = 1.0f);
 	void ToolBox(int x1, int y1, int x2, int y2, int tool, Brush * cBrush, float strength = 1.0f);
-	
+
 	void CreateBox(int x1, int y1, int x2, int y2, int c, int flags);
 	int FloodINST(int x, int y, int fullc, int cm);
 	int FloodParts(int x, int y, int c, int cm, int bm, int flags);
@@ -182,17 +184,17 @@ public:
 	int CreateParts(int x, int y, int rx, int ry, int c, int flags);
 	void CreateLine(int x1, int y1, int x2, int y2, int c, Brush * cBrush);
 	void CreateLine(int x1, int y1, int x2, int y2, int rx, int ry, int c, int flags);
-	
+
 	void CreateWallBox(int x1, int y1, int x2, int y2, int c, int flags);
 	int FloodWalls(int x, int y, int c, int cm, int bm, int flags);
 	int CreateWalls(int x, int y, int rx, int ry, int c, int flags, Brush * cBrush = NULL);
 	void CreateWallLine(int x1, int y1, int x2, int y2, int rx, int ry, int c, int flags, Brush * cBrush = NULL);
-	
+
 	void ApplyDecoration(int x, int y, int colR, int colG, int colB, int colA, int mode);
 	void ApplyDecorationPoint(int x, int y, int colR, int colG, int colB, int colA, int mode, Brush * cBrush = NULL);
 	void ApplyDecorationLine(int x1, int y1, int x2, int y2, int colR, int colG, int colB, int colA, int mode, Brush * cBrush = NULL);
 	void ApplyDecorationBox(int x1, int y1, int x2, int y2, int colR, int colG, int colB, int colA, int mode);
-	
+
 	void GetGravityField(int x, int y, float particleGrav, float newtonGrav, float & pGravX, float & pGravY);
 
 	int GetParticleType(std::string type);

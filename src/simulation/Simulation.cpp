@@ -11,6 +11,7 @@
 #include "Elements.h"
 //#include "ElementFunctions.h"
 #include "Air.h"
+#include "TimeField.h"
 #include "Gravity.h"
 #include "elements/Element.h"
 
@@ -181,7 +182,7 @@ GameSave * Simulation::Save(int fullX, int fullY, int fullX2, int fullY2)
 	fullH = fullY2-fullY;
 
 	GameSave * newSave = new GameSave(blockW, blockH);
-	
+
 	for(int i = 0; i < NPART; i++)
 	{
 		int x, y;
@@ -196,7 +197,7 @@ GameSave * Simulation::Save(int fullX, int fullY, int fullX2, int fullY2)
 				*newSave << tempPart;
 		}
 	}
-	
+
 	for(int i = 0; i < MAXSIGNS && i < signs.size(); i++)
 	{
 		if(signs[i].text.length() && signs[i].x >= fullX && signs[i].y >= fullY && signs[i].x < fullX2 && signs[i].y < fullY2)
@@ -207,7 +208,7 @@ GameSave * Simulation::Save(int fullX, int fullY, int fullX2, int fullY2)
 			*newSave << tempSign;
 		}
 	}
-	
+
 	for(int saveBlockX = 0; saveBlockX < newSave->blockWidth; saveBlockX++)
 	{
 		for(int saveBlockY = 0; saveBlockY < newSave->blockHeight; saveBlockY++)
@@ -247,7 +248,7 @@ Snapshot * Simulation::CreateSnapshot()
 
 void Simulation::Restore(const Snapshot & snap)
 {
-	parts_lastActiveIndex = NPART-1; 
+	parts_lastActiveIndex = NPART-1;
 	std::copy(snap.AirPressure.begin(), snap.AirPressure.end(), &pv[0][0]);
 	std::copy(snap.AirVelocityX.begin(), snap.AirVelocityX.end(), &vx[0][0]);
 	std::copy(snap.AirVelocityY.begin(), snap.AirVelocityY.end(), &vy[0][0]);
@@ -370,16 +371,16 @@ int Simulation::flood_prop_2(int x, int y, size_t propoffset, void * propvalue, 
 			case StructProperty::Float:
 				*((float*)(((char*)&parts[i])+propoffset)) = *((float*)propvalue);
 				break;
-				
+
 			case StructProperty::ParticleType:
 			case StructProperty::Integer:
 				*((int*)(((char*)&parts[i])+propoffset)) = *((int*)propvalue);
 				break;
-				
+
 			case StructProperty::UInteger:
 				*((unsigned int*)(((char*)&parts[i])+propoffset)) = *((unsigned int*)propvalue);
 				break;
-				
+
 			default:
 				break;
 		}
@@ -714,10 +715,10 @@ int Simulation::FloodWalls(int x, int y, int c, int cm, int bm, int flags)
 		else
 			bm = 0;
 	}
-	
+
 	if (((pmap[y][x]&0xFF)!=cm || bmap[y/CELL][x/CELL]!=bm )/*||( (flags&BRUSH_SPECIFIC_DELETE) && cm!=SLALT)*/)
 		return 1;
-	
+
 	// go left as far as possible
 	x1 = x2 = x;
 	while (x1>=CELL)
@@ -736,7 +737,7 @@ int Simulation::FloodWalls(int x, int y, int c, int cm, int bm, int flags)
 		}
 		x2++;
 	}
-	
+
 	// fill span
 	for (x=x1; x<=x2; x++)
 	{
@@ -917,9 +918,9 @@ void Simulation::ApplyDecoration(int x, int y, int colR_, int colG_, int colB_, 
 	else if (mode == DECO_SMUDGE)
 	{
 		float tas = 0.0f, trs = 0.0f, tgs = 0.0f, tbs = 0.0f;
-		
+
 		int rx, ry;
-		float num = 0;	
+		float num = 0;
 		for (rx=-1; rx<2; rx++)
 			for (ry=-1; ry<2; ry++)
 			{
@@ -975,10 +976,10 @@ void Simulation::ApplyDecorationPoint(int positionX, int positionY, int colR, in
 	if(cBrush)
 	{
 		int radiusX, radiusY, sizeX, sizeY;
-		
+
 		radiusX = cBrush->GetRadius().X;
 		radiusY = cBrush->GetRadius().Y;
-		
+
 		sizeX = cBrush->GetSize().X;
 		sizeY = cBrush->GetSize().Y;
 
@@ -1097,10 +1098,10 @@ int Simulation::ToolBrush(int positionX, int positionY, int tool, Brush * cBrush
 	if(cBrush)
 	{
 		int radiusX, radiusY, sizeX, sizeY;
-		
+
 		radiusX = cBrush->GetRadius().X;
 		radiusY = cBrush->GetRadius().Y;
-		
+
 		sizeX = cBrush->GetSize().X;
 		sizeY = cBrush->GetSize().Y;
 		unsigned char *bitmap = cBrush->GetBitmap();
@@ -1191,15 +1192,15 @@ int Simulation::CreateParts(int positionX, int positionY, int c, Brush * cBrush)
 	if(cBrush)
 	{
 		int radiusX, radiusY, sizeX, sizeY;
-		
+
 		radiusX = cBrush->GetRadius().X;
 		radiusY = cBrush->GetRadius().Y;
-		
+
 		sizeX = cBrush->GetSize().X;
 		sizeY = cBrush->GetSize().Y;
-		
+
 		unsigned char *bitmap = cBrush->GetBitmap();
-		
+
 		if(c == PT_NONE)
 		{
 			for(int y = 0; y < sizeY; y++)
@@ -1236,7 +1237,7 @@ int Simulation::CreateParts(int x, int y, int rx, int ry, int c, int flags)
 	int wall = c - 100;
 	if (c==SPC_WIND || c==PT_FIGH)
 		return 0;
-	
+
 	if (c==PT_LIGH)
 	{
 		if (lighting_recreate>0 && rx+ry>0)
@@ -1253,7 +1254,7 @@ int Simulation::CreateParts(int x, int y, int rx, int ry, int c, int flags)
 		}
 		else return 0;
 	}
-	
+
 	//eraser
 	if (c == 0)
 	{
@@ -1269,7 +1270,7 @@ int Simulation::CreateParts(int x, int y, int rx, int ry, int c, int flags)
 		}
 		return 1;
 	}
-	
+
 	if (c == SPC_AIR || c == SPC_HEAT || c == SPC_COOL || c == SPC_VACUUM || c == SPC_PGRV || c == SPC_NGRV)
 	{
 		if (rx==0&&ry==0)
@@ -1288,7 +1289,7 @@ int Simulation::CreateParts(int x, int y, int rx, int ry, int c, int flags)
 		}
 		return 1;
 	}
-	
+
 	//else, no special modes, draw element like normal.
 	if (rx==0&&ry==0)//workaround for 1pixel brush/floodfill crashing. todo: find a better fix later.
 	{
@@ -1308,20 +1309,20 @@ int Simulation::CreateParts(int x, int y, int rx, int ry, int c, int flags)
 int Simulation::CreateWalls(int x, int y, int rx, int ry, int c, int flags, Brush * cBrush)
 {
 	int i, j, r, f = 0, u, v, oy, ox, b = 0, dw = 0, stemp = 0, p;//n;
-	
+
 	if(cBrush)
 	{
 		rx = cBrush->GetRadius().X;
 		ry = cBrush->GetRadius().Y;
 	}
-	
+
 	int wall = c;
-	
+
 	if (wall == WL_ERASE)
 		b = 0;
 	else
 		b = wall;
-	
+
 	ry = ry/CELL;
 	rx = rx/CELL;
 	x = x/CELL;
@@ -3214,6 +3215,8 @@ void Simulation::update_particles_i(int start, int inc)
 	unsigned int elem_properties;
 	float pGravX, pGravY, pGravD;
 	int excessive_stacking_found = 0;
+	float tmf,tmfr;
+	int tmi,tr;
 
 	currentTick++;
 
@@ -3561,6 +3564,16 @@ void Simulation::update_particles_i(int start, int inc)
 			if (bmap[y/CELL][x/CELL]==WL_DETECT && emap[y/CELL][x/CELL]<8)
 				set_emap(x/CELL, y/CELL);
 
+            tmfr=pow(1.2f,timefld->field[y/CELL][x/CELL]);
+			if(t==PT_IRON)
+                tmi=1;
+            else{
+                tmi=(int)tmfr;
+                tmf=tmfr-tmi;
+                if(tmf>(float)rand()/(float)RAND_MAX)
+                    tmi++;
+            }
+            for(tr=0;tr<tmi;tr++){
 			//adding to velocity from the particle's velocity
 			vx[y/CELL][x/CELL] = vx[y/CELL][x/CELL]*elements[t].AirLoss + elements[t].AirDrag*parts[i].vx;
 			vy[y/CELL][x/CELL] = vy[y/CELL][x/CELL]*elements[t].AirLoss + elements[t].AirDrag*parts[i].vy;
@@ -4034,43 +4047,45 @@ void Simulation::update_particles_i(int start, int inc)
 			}
 
 			//call the particle update function, if there is one
+
 #ifdef LUACONSOLE
-			if (elements[t].Update && lua_el_mode[t] != 2)
+                if (elements[t].Update && lua_el_mode[t] != 2)
 #else
-			if (elements[t].Update)
+                if (elements[t].Update)
 #endif
-			{
-				if ((*(elements[t].Update))(this, i,x,y,surround_space,nt, parts, pmap))
-					continue;
-				else if (t==PT_WARP)
-				{
-					// Warp does some movement in its update func, update variables to avoid incorrect data in pmap
-					x = (int)(parts[i].x+0.5f);
-					y = (int)(parts[i].y+0.5f);
-				}
-			}
+                {
+                    if ((*(elements[t].Update))(this, i,x,y,surround_space,nt, parts, pmap))
+                        goto movedone;
+                    else if (t==PT_WARP)
+                    {
+                        // Warp does some movement in its update func, update variables to avoid incorrect data in pmap
+                        x = (int)(parts[i].x+0.5f);
+                        y = (int)(parts[i].y+0.5f);
+                    }
+                }
 #ifdef LUACONSOLE
-			if(lua_el_mode[t])
-			{
-				if(luacon_part_update(t,i,x,y,surround_space,nt))
-					continue;
-				// Need to update variables, in case they've been changed by Lua
-				x = (int)(parts[i].x+0.5f);
-				y = (int)(parts[i].y+0.5f);
-			}
+                if(lua_el_mode[t])
+                {
+                    if(luacon_part_update(t,i,x,y,surround_space,nt))
+                        goto movedone;
+                    // Need to update variables, in case they've been changed by Lua
+                    x = (int)(parts[i].x+0.5f);
+                    y = (int)(parts[i].y+0.5f);
+                }
 #endif
 
 
-			if(legacy_enable)//if heat sim is off
-				Element::legacyUpdate(this, i,x,y,surround_space,nt, parts, pmap);
-
+                if(legacy_enable)//if heat sim is off
+                    Element::legacyUpdate(this, i,x,y,surround_space,nt, parts, pmap);
+            }
 killed:
 			if (parts[i].type == PT_NONE)//if its dead, skip to next particle
 				continue;
 
 			if (!parts[i].vx&&!parts[i].vy)//if its not moving, skip to next particle, movement code it next
 				continue;
-
+            parts[i].vx*=tmfr;
+            parts[i].vy*=tmfr;
 			mv = fmaxf(fabsf(parts[i].vx), fabsf(parts[i].vy));
 			if (mv < ISTP)
 			{
@@ -4156,7 +4171,7 @@ killed:
 					if (parts[i].flags&FLAG_SKIPMOVE)
 					{
 						parts[i].flags &= ~FLAG_SKIPMOVE;
-						continue;
+						goto movedone;
 					}
 
 					rt = pmap[fin_y][fin_x] & 0xFF;
@@ -4210,7 +4225,7 @@ killed:
 				else if (!do_move(i, x, y, fin_xf, fin_yf))
 				{
 					if (parts[i].type == PT_NONE)
-						continue;
+						goto movedone;
 					// reflection
 					parts[i].flags |= FLAG_STAGNANT;
 					if (t==PT_NEUT && 100>(rand()%1000))
@@ -4271,7 +4286,7 @@ killed:
 				if (!do_move(i, x, y, fin_xf, fin_yf))
 				{
 					if (parts[i].type == PT_NONE)
-						continue;
+						goto movedone;
 					// can't move there, so bounce off
 					// TODO
 					// TODO: Work out what previous TODO was for
@@ -4305,7 +4320,7 @@ killed:
 				if (!do_move(i, x, y, fin_xf, fin_yf))
 				{
 					if (parts[i].type == PT_NONE)
-						continue;
+						goto movedone;
 					if (fin_x!=x && do_move(i, x, y, fin_xf, clear_yf))
 					{
 						parts[i].vx *= elements[t].Collision;
@@ -4528,6 +4543,8 @@ killed:
 				}
 			}
 movedone:
+            parts[i].vx/=tmfr;
+            parts[i].vy/=tmfr;
 			continue;
 		}
 }
@@ -4564,6 +4581,7 @@ void Simulation::update_particles()//doesn't update the particles themselves, bu
 	if(!sys_pause||framerender)
 	{
 		air->update_air();
+		timefld->update_time();
 
 		if(aheat_enable)
 			air->update_airh();
@@ -4699,11 +4717,11 @@ Simulation::Simulation():
 	pretty_powder(0),
 	sandcolour_frame(0)
 {
-    
+
     int tportal_rx[] = {-1, 0, 1, 1, 1, 0,-1,-1};
     int tportal_ry[] = {-1,-1,-1, 0, 1, 1, 1, 0};
-    
-    memcpy(portal_rx, tportal_rx, sizeof(tportal_rx));   
+
+    memcpy(portal_rx, tportal_rx, sizeof(tportal_rx));
     memcpy(portal_ry, tportal_ry, sizeof(tportal_ry));
 
     currentTick = 0;
@@ -4721,6 +4739,7 @@ Simulation::Simulation():
 
 	//Create and attach air simulation
 	air = new Air(*this);
+	timefld = new TimeField();
 	//Give air sim references to our data
 	air->bmap = bmap;
 	air->emap = emap;
@@ -4747,7 +4766,7 @@ Simulation::Simulation():
 	unsigned int * platentT = LoadLatent(latentCount);
 	memcpy(platent, platentT, latentCount * sizeof(unsigned int));
 	free(platentT);
-	
+
 	//elements = new Element[PT_NUM];
 	std::vector<Element> elementList = GetElements();
 	for(int i = 0; i < PT_NUM; i++)
@@ -4757,7 +4776,7 @@ Simulation::Simulation():
 		else
 			elements[i] = Element();
 	}
-	
+
 	tools = GetTools();
 
 	int golRulesCount;
