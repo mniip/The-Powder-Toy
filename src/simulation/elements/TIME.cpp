@@ -43,7 +43,7 @@ Element_TIME::Element_TIME()
     HighTemperatureTransition = ITH;
 
     Update = &Element_TIME::update;
-    Graphics = &Element_PRTI::graphics;
+    Graphics = &Element_TIME::graphics;
 }
 
 //#TPT-Directive ElementHeader Element_TIME static int update(UPDATE_FUNC_ARGS)
@@ -56,8 +56,19 @@ int Element_TIME::update(UPDATE_FUNC_ARGS)
 
 //#TPT-Directive ElementHeader Element_TIME static int graphics(GRAPHICS_FUNC_ARGS)
 int Element_TIME::graphics(GRAPHICS_FUNC_ARGS)
-
 {
+    float tm=cpart->temp-273.15f;
+    *firea=255.0f;
+    *firer=tm;
+    *fireg=0;
+    *fireb=-tm;
+
+    *cola=255.0f;
+    *colr=0xFF;
+    *colg=0xCC;
+    *colb=0x33;
+
+	*pixel_mode |= FIRE_ADD;
 	return 0;
 }
 
