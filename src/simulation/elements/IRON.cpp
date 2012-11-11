@@ -50,7 +50,6 @@ Element_IRON::Element_IRON()
 int Element_IRON::update(UPDATE_FUNC_ARGS)
  {
 	int r, rx, ry;
-    sim->timefld->field[y/CELL][x/CELL]=fmax(-16.0f,fmin(16.0f,parts[i].temp-273.15f-22.0f));
 	for (rx=-1; rx<2; rx++)
 		for (ry=-1; ry<2; ry++)
 			if (x+rx>=0 && y+ry>0 && x+rx<XRES && y+ry<YRES && (rx || ry))
