@@ -2125,17 +2125,16 @@ void Renderer::draw_air()
     float (*hv)[XRES/CELL] = sim->air->hv;
 	float (*vx)[XRES/CELL] = sim->air->vx;
 	float (*vy)[XRES/CELL] = sim->air->vy;
-	float (*tm)[XRES/CELL] = sim->timefld->field;
 	pixel c;
 	for (y=0; y<YRES/CELL; y++)
 		for (x=0; x<XRES/CELL; x++)
 		{
 			if (display_mode & DISPLAY_AIRP)
 			{
-				if (tm[y][x] > 0.0f)
-					c  = PIXRGB(clamp_flt(tm[y][x], 0.0f, 8.0f), 0, 0);//positive pressure is red!//
+				if (pv[y][x] > 0.0f)
+					c  = PIXRGB(clamp_flt(pv[y][x], 0.0f, 8.0f), 0, 0);//positive pressure is red!//
 				else
-					c  = PIXRGB(0, 0, clamp_flt(-tm[y][x], 0.0f, 8.0f));//negative pressure is blue!
+					c  = PIXRGB(0, 0, clamp_flt(-pv[y][x], 0.0f, 8.0f));//negative pressure is blue!
 			}
 			else if (display_mode & DISPLAY_AIRV)
 			{

@@ -1922,6 +1922,8 @@ void Simulation::clear_sim(void)
 	if(air)
 		air->Clear();
 	SetEdgeMode(edgeMode);
+	if(timefld)
+        timefld->Clear();
 }
 void Simulation::init_can_move()
 {
@@ -3565,7 +3567,7 @@ void Simulation::update_particles_i(int start, int inc)
 				set_emap(x/CELL, y/CELL);
 
             tmfr=pow(1.2f,timefld->field[y/CELL][x/CELL]);
-			if(t==PT_IRON)
+			if(t==PT_TIME)
                 tmi=1;
             else{
                 tmi=(int)tmfr;
