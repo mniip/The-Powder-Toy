@@ -58,18 +58,7 @@ int Element_TIME::update(UPDATE_FUNC_ARGS)
 int Element_TIME::graphics(GRAPHICS_FUNC_ARGS)
 
 {
-	*firea = 8;
-	*firer = 255;
-	*fireg = 0;
-	*fireb = 0;
-	*pixel_mode |= EFFECT_DBGLINES;
-	if(parts[i].temp>273.2f)
-        *pixel_mode |= EFFECT_GRAVOUT;
-    else if(parts[i].temp<273.1f)
-        *pixel_mode |= EFFECT_GRAVOUT;
-	*pixel_mode &= ~PMODE;
-	*pixel_mode |= PMODE_ADD;
-	return 1;
+	return 0;
 }
 
 Element_TIME::~Element_TIME() {}
