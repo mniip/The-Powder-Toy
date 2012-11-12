@@ -4570,254 +4570,253 @@ movedone:
 				continue;
 			}
 		}
+int Simulation::GetParticleType(std::string type)
+{
+	int i = -1;
+	char * txt = (char*)type.c_str();
 
-	int Simulation::GetParticleType(std::string type)
-	{
-		int i = -1;
-		char * txt = (char*)type.c_str();
-
-		// alternative names for some elements
-		if (strcasecmp(txt,"C4")==0) i = PT_PLEX;
-		else if (strcasecmp(txt,"C5")==0) i = PT_C5;
-		else if (strcasecmp(txt,"NONE")==0) i = PT_NONE;
-		for (i=1; i<PT_NUM; i++) {
-			if (strcasecmp(txt, elements[i].Name)==0 && strlen(elements[i].Name) && elements[i].Enabled)
-			{
-				return i;
-			}
+	// alternative names for some elements
+	if (strcasecmp(txt,"C4")==0) i = PT_PLEX;
+	else if (strcasecmp(txt,"C5")==0) i = PT_C5;
+	else if (strcasecmp(txt,"NONE")==0) i = PT_NONE;
+	for (i=1; i<PT_NUM; i++) {
+		if (strcasecmp(txt, elements[i].Name)==0 && strlen(elements[i].Name) && elements[i].Enabled)
+		{
+			return i;
 		}
-		return -1;
 	}
+	return -1;
+}
 
-	void Simulation::update_particles()//doesn't update the particles themselves, but some other things
-	{
-		int i, j, x, y, t, nx, ny, r, cr,cg,cb, l = -1;
-		float lx, ly;
-		int lastPartUsed = 0;
-		int lastPartUnused = -1;
+void Simulation::update_particles()//doesn't update the particles themselves, but some other things
+{
+	int i, j, x, y, t, nx, ny, r, cr,cg,cb, l = -1;
+	float lx, ly;
+	int lastPartUsed = 0;
+	int lastPartUnused = -1;
 #ifdef MT
-		int pt = 0, pc = 0;
-		pthread_t *InterThreads;
+	int pt = 0, pc = 0;
+	pthread_t *InterThreads;
 #endif
 
-		if(!sys_pause||framerender)
+	if(!sys_pause||framerender)
+	{
+		air->update_air();
+		timefld->update_time();
+
+		if(aheat_enable)
+			air->update_airh();
+
+		if(grav->ngrav_enable)
 		{
-			air->update_air();
-			timefld->update_time();
+			grav->gravity_update_async();
 
-			if(aheat_enable)
-				air->update_airh();
+			//Get updated buffer pointers for gravity
+			gravx = grav->gravx;
+			gravy = grav->gravy;
+			gravp = grav->gravp;
+			gravmap = grav->gravmap;
 
-			if(grav->ngrav_enable)
+			if(gravWallChanged)
 			{
-				grav->gravity_update_async();
-
-				//Get updated buffer pointers for gravity
-				gravx = grav->gravx;
-				gravy = grav->gravy;
-				gravp = grav->gravp;
-				gravmap = grav->gravmap;
-
-				if(gravWallChanged)
-				{
-					grav->gravity_mask();
-					gravWallChanged = false;
-				}
-			}
-			if(emp_decor>0)
-				emp_decor -= emp_decor/25+2;
-			if(emp_decor < 0)
-				emp_decor = 0;
-		}
-		sandcolour = (int)(20.0f*sin((float)sandcolour_frame*(M_PI/180.0f)));
-		sandcolour_frame = (sandcolour_frame++)%360;
-
-		memset(pmap, 0, sizeof(pmap));
-		memset(pmap_count, 0, sizeof(pmap_count));
-		memset(photons, 0, sizeof(photons));
-		NUM_PARTS = 0;
-		for (i=0; i<=parts_lastActiveIndex; i++)//the particle loop that resets the pmap/photon maps every frame, to update them.
-		{
-			if (parts[i].type)
-			{
-				t = parts[i].type;
-				x = (int)(parts[i].x+0.5f);
-				y = (int)(parts[i].y+0.5f);
-				if (x>=0 && y>=0 && x<XRES && y<YRES)
-				{
-					if (elements[t].Properties & TYPE_ENERGY)
-						photons[y][x] = t|(i<<8);
-					else
-					{
-						// Particles are sometimes allowed to go inside INVS and FILT
-						// To make particles collide correctly when inside these elements, these elements must not overwrite an existing pmap entry from particles inside them
-						if (!pmap[y][x] || (t!=PT_INVIS && t!= PT_FILT))
-							pmap[y][x] = t|(i<<8);
-						// (there are a few exceptions, including energy particles - currently no limit on stacking those)
-						if (t!=PT_THDR && t!=PT_EMBR && t!=PT_FIGH && t!=PT_PLSM)
-							pmap_count[y][x]++;
-					}
-				}
-				lastPartUsed = i;
-				NUM_PARTS ++;
-			}
-			else
-			{
-				if (lastPartUnused<0) pfree = i;
-				else parts[lastPartUnused].life = i;
-				lastPartUnused = i;
+				grav->gravity_mask();
+				gravWallChanged = false;
 			}
 		}
-		if (lastPartUnused==-1)
+		if(emp_decor>0)
+			emp_decor -= emp_decor/25+2;
+		if(emp_decor < 0)
+			emp_decor = 0;
+	}
+	sandcolour = (int)(20.0f*sin((float)sandcolour_frame*(M_PI/180.0f)));
+	sandcolour_frame = (sandcolour_frame++)%360;
+
+	memset(pmap, 0, sizeof(pmap));
+	memset(pmap_count, 0, sizeof(pmap_count));
+	memset(photons, 0, sizeof(photons));
+	NUM_PARTS = 0;
+	for (i=0; i<=parts_lastActiveIndex; i++)//the particle loop that resets the pmap/photon maps every frame, to update them.
+	{
+		if (parts[i].type)
 		{
-			if (parts_lastActiveIndex>=NPART-1) pfree = -1;
-			else pfree = parts_lastActiveIndex+1;
+			t = parts[i].type;
+			x = (int)(parts[i].x+0.5f);
+			y = (int)(parts[i].y+0.5f);
+			if (x>=0 && y>=0 && x<XRES && y<YRES)
+			{
+				if (elements[t].Properties & TYPE_ENERGY)
+					photons[y][x] = t|(i<<8);
+				else
+				{
+					// Particles are sometimes allowed to go inside INVS and FILT
+					// To make particles collide correctly when inside these elements, these elements must not overwrite an existing pmap entry from particles inside them
+					if (!pmap[y][x] || (t!=PT_INVIS && t!= PT_FILT))
+						pmap[y][x] = t|(i<<8);
+					// (there are a few exceptions, including energy particles - currently no limit on stacking those)
+					if (t!=PT_THDR && t!=PT_EMBR && t!=PT_FIGH && t!=PT_PLSM)
+						pmap_count[y][x]++;
+				}
+			}
+			lastPartUsed = i;
+			NUM_PARTS ++;
 		}
 		else
 		{
-			if (parts_lastActiveIndex>=NPART-1) parts[lastPartUnused].life = -1;
-			else parts[lastPartUnused].life = parts_lastActiveIndex+1;
+			if (lastPartUnused<0) pfree = i;
+			else parts[lastPartUnused].life = i;
+			lastPartUnused = i;
 		}
-		parts_lastActiveIndex = lastPartUsed;
-		if (!sys_pause||framerender)
+	}
+	if (lastPartUnused==-1)
+	{
+		if (parts_lastActiveIndex>=NPART-1) pfree = -1;
+		else pfree = parts_lastActiveIndex+1;
+	}
+	else
+	{
+		if (parts_lastActiveIndex>=NPART-1) parts[lastPartUnused].life = -1;
+		else parts[lastPartUnused].life = parts_lastActiveIndex+1;
+	}
+	parts_lastActiveIndex = lastPartUsed;
+	if (!sys_pause||framerender)
+	{
+		for (y=0; y<YRES/CELL; y++)
 		{
-			for (y=0; y<YRES/CELL; y++)
+			for (x=0; x<XRES/CELL; x++)
 			{
-				for (x=0; x<XRES/CELL; x++)
-				{
-					if (emap[y][x])
-						emap[y][x] --;
-					air->bmap_blockair[y][x] = (bmap[y][x]==WL_WALL || bmap[y][x]==WL_WALLELEC || (bmap[y][x]==WL_EWALL && !emap[y][x]));
-					air->bmap_blockairh[y][x] = (bmap[y][x]==WL_WALL || bmap[y][x]==WL_WALLELEC || bmap[y][x]==WL_GRAV || (bmap[y][x]==WL_EWALL && !emap[y][x]));
-				}
+				if (emap[y][x])
+					emap[y][x] --;
+				air->bmap_blockair[y][x] = (bmap[y][x]==WL_WALL || bmap[y][x]==WL_WALLELEC || (bmap[y][x]==WL_EWALL && !emap[y][x]));
+				air->bmap_blockairh[y][x] = (bmap[y][x]==WL_WALL || bmap[y][x]==WL_WALLELEC || bmap[y][x]==WL_GRAV || (bmap[y][x]==WL_EWALL && !emap[y][x]));
 			}
 		}
-
-		if(!sys_pause||framerender)
-			update_particles_i(0, 1);
-
-		if(framerender)
-			framerender--;
-		// this should probably be elsewhere
-		/*for (y=0; y<YRES/CELL; y++)
-		  for (x=0; x<XRES/CELL; x++)
-		  if (bmap[y][x]==WL_STREAM)
-		  {
-		  lx = x*CELL + CELL*0.5f;
-		  ly = y*CELL + CELL*0.5f;
-		  for (t=0; t<1024; t++)
-		  {
-		  nx = (int)(lx+0.5f);
-		  ny = (int)(ly+0.5f);
-		  if (nx<0 || nx>=XRES || ny<0 || ny>=YRES)
-		  break;
-		  addpixel(vid, nx, ny, 255, 255, 255, 64);
-		  i = nx/CELL;
-		  j = ny/CELL;
-		  lx += vx[j][i]*0.125f;
-		  ly += vy[j][i]*0.125f;
-		  if (bmap[j][i]==WL_STREAM && i!=x && j!=y)
-		  break;
-		  }
-		  drawtext(vid, x*CELL, y*CELL-2, "\x8D", 255, 255, 255, 128);
-		  }
-		  */
 	}
 
-	Simulation::~Simulation()
+	if(!sys_pause||framerender)
+		update_particles_i(0, 1);
+
+	if(framerender)
+		framerender--;
+	// this should probably be elsewhere
+	/*for (y=0; y<YRES/CELL; y++)
+	  for (x=0; x<XRES/CELL; x++)
+	  if (bmap[y][x]==WL_STREAM)
+	  {
+	  lx = x*CELL + CELL*0.5f;
+	  ly = y*CELL + CELL*0.5f;
+	  for (t=0; t<1024; t++)
+	  {
+	  nx = (int)(lx+0.5f);
+	  ny = (int)(ly+0.5f);
+	  if (nx<0 || nx>=XRES || ny<0 || ny>=YRES)
+	  break;
+	  addpixel(vid, nx, ny, 255, 255, 255, 64);
+	  i = nx/CELL;
+	  j = ny/CELL;
+	  lx += vx[j][i]*0.125f;
+	  ly += vy[j][i]*0.125f;
+	  if (bmap[j][i]==WL_STREAM && i!=x && j!=y)
+	  break;
+	  }
+	  drawtext(vid, x*CELL, y*CELL-2, "\x8D", 255, 255, 255, 128);
+	  }
+	  */
+}
+
+Simulation::~Simulation()
+{
+	delete[] platent;
+	delete grav;
+	delete air;
+	for(int i = 0; i < tools.size(); i++)
+		delete tools[i];
+}
+
+Simulation::Simulation():
+	sys_pause(0),
+	framerender(false),
+	pretty_powder(0),
+	sandcolour_frame(0)
+{
+
+	int tportal_rx[] = {-1, 0, 1, 1, 1, 0,-1,-1};
+	int tportal_ry[] = {-1,-1,-1, 0, 1, 1, 1, 0};
+
+	memcpy(portal_rx, tportal_rx, sizeof(tportal_rx));
+	memcpy(portal_ry, tportal_ry, sizeof(tportal_ry));
+
+	currentTick = 0;
+	std::fill(elementCount, elementCount+PT_NUM, 0);
+
+	//Create and attach gravity simulation
+	grav = new Gravity();
+	//Give air sim references to our data
+	grav->bmap = bmap;
+	//Gravity sim gives us maps to use
+	gravx = grav->gravx;
+	gravy = grav->gravy;
+	gravp = grav->gravp;
+	gravmap = grav->gravmap;
+
+	//Create and attach air simulation
+	air = new Air(*this);
+	timefld = new TimeField();
+	//Give air sim references to our data
+	air->bmap = bmap;
+	air->emap = emap;
+	air->fvx = fvx;
+	air->fvy = fvy;
+	//Air sim gives us maps to use
+	vx = air->vx;
+	vy = air->vy;
+	pv = air->pv;
+	hv = air->hv;
+
+	int menuCount;
+	menu_section * msectionsT = LoadMenus(menuCount);
+	memcpy(msections, msectionsT, menuCount * sizeof(menu_section));
+	free(msectionsT);
+
+	int wallCount;
+	wall_type * wtypesT = LoadWalls(wallCount);
+	memcpy(wtypes, wtypesT, wallCount * sizeof(wall_type));
+	free(wtypesT);
+
+	platent = new unsigned[PT_NUM];
+	int latentCount;
+	unsigned int * platentT = LoadLatent(latentCount);
+	memcpy(platent, platentT, latentCount * sizeof(unsigned int));
+	free(platentT);
+
+	//elements = new Element[PT_NUM];
+	std::vector<Element> elementList = GetElements();
+	for(int i = 0; i < PT_NUM; i++)
 	{
-		delete[] platent;
-		delete grav;
-		delete air;
-		for(int i = 0; i < tools.size(); i++)
-			delete tools[i];
+		if(i < elementList.size())
+			elements[i] = elementList[i];
+		else
+			elements[i] = Element();
 	}
 
-	Simulation::Simulation():
-		sys_pause(0),
-		framerender(false),
-		pretty_powder(0),
-		sandcolour_frame(0)
-	{
+	tools = GetTools();
 
-		int tportal_rx[] = {-1, 0, 1, 1, 1, 0,-1,-1};
-		int tportal_ry[] = {-1,-1,-1, 0, 1, 1, 1, 0};
+	int golRulesCount;
+	int * golRulesT = LoadGOLRules(golRulesCount);
+	memcpy(grule, golRulesT, sizeof(int) * (golRulesCount*10));
+	free(golRulesT);
 
-		memcpy(portal_rx, tportal_rx, sizeof(tportal_rx));
-		memcpy(portal_ry, tportal_ry, sizeof(tportal_ry));
+	int golTypesCount;
+	int * golTypesT = LoadGOLTypes(golTypesCount);
+	memcpy(goltype, golTypesT, sizeof(int) * (golTypesCount));
+	free(golTypesT);
 
-		currentTick = 0;
-		std::fill(elementCount, elementCount+PT_NUM, 0);
+	int golMenuCount;
+	gol_menu * golMenuT = LoadGOLMenu(golMenuCount);
+	memcpy(gmenu, golMenuT, sizeof(gol_menu) * golMenuCount);
+	free(golMenuT);
 
-		//Create and attach gravity simulation
-		grav = new Gravity();
-		//Give air sim references to our data
-		grav->bmap = bmap;
-		//Gravity sim gives us maps to use
-		gravx = grav->gravx;
-		gravy = grav->gravy;
-		gravp = grav->gravp;
-		gravmap = grav->gravmap;
+	init_can_move();
+	clear_sim();
 
-		//Create and attach air simulation
-		air = new Air(*this);
-		timefld = new TimeField();
-		//Give air sim references to our data
-		air->bmap = bmap;
-		air->emap = emap;
-		air->fvx = fvx;
-		air->fvy = fvy;
-		//Air sim gives us maps to use
-		vx = air->vx;
-		vy = air->vy;
-		pv = air->pv;
-		hv = air->hv;
-
-		int menuCount;
-		menu_section * msectionsT = LoadMenus(menuCount);
-		memcpy(msections, msectionsT, menuCount * sizeof(menu_section));
-		free(msectionsT);
-
-		int wallCount;
-		wall_type * wtypesT = LoadWalls(wallCount);
-		memcpy(wtypes, wtypesT, wallCount * sizeof(wall_type));
-		free(wtypesT);
-
-		platent = new unsigned[PT_NUM];
-		int latentCount;
-		unsigned int * platentT = LoadLatent(latentCount);
-		memcpy(platent, platentT, latentCount * sizeof(unsigned int));
-		free(platentT);
-
-		//elements = new Element[PT_NUM];
-		std::vector<Element> elementList = GetElements();
-		for(int i = 0; i < PT_NUM; i++)
-		{
-			if(i < elementList.size())
-				elements[i] = elementList[i];
-			else
-				elements[i] = Element();
-		}
-
-		tools = GetTools();
-
-		int golRulesCount;
-		int * golRulesT = LoadGOLRules(golRulesCount);
-		memcpy(grule, golRulesT, sizeof(int) * (golRulesCount*10));
-		free(golRulesT);
-
-		int golTypesCount;
-		int * golTypesT = LoadGOLTypes(golTypesCount);
-		memcpy(goltype, golTypesT, sizeof(int) * (golTypesCount));
-		free(golTypesT);
-
-		int golMenuCount;
-		gol_menu * golMenuT = LoadGOLMenu(golMenuCount);
-		memcpy(gmenu, golMenuT, sizeof(gol_menu) * golMenuCount);
-		free(golMenuT);
-
-		init_can_move();
-		clear_sim();
-
-		grav->gravity_mask();
-	}
+	grav->gravity_mask();
+}
