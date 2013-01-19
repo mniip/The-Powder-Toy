@@ -101,16 +101,48 @@ int main(int argc, char *argv[])
 	ren->RenderBegin();
 	ren->RenderEnd();
 
-	VideoBuffer screenBuffer = ren->DumpFrame();
+	VideoBuffer buf = ren->DumpFrame();
 	//ppmFile = format::VideoBufferToPPM(screenBuffer);
-	ptiFile = format::VideoBufferToPTI(screenBuffer);
-	pngFile = format::VideoBufferToPNG(screenBuffer);
+	ptiFile = format::VideoBufferToPTI(buf);
+	pngFile = format::VideoBufferToPNG(buf);
+#define W(X) (X).Width
+#define H(X) (X).Height
+#define A(B,X,Y) (B).Buffer[(Y)*W(B)+X]
+#define M 6
+#define DIS(A,X) abs(X-(A))+16
+#define DM(A,X) (X)*(DIS(A,X))
+	VideoBuffer small = VideoBuffer(W(buf)/M,H(buf)/M);
+	int x,y,dx,dy;
+	for(y=0;y<H(small);y++)
+		for(x=0;x<W(small);x++)
+		{
+			int ar=0,ag=0,ab=0;
+			int r=0,g=0,b=0;
+			float nr=0.01f,ng=0.01f,nb=0.01f;
+			for(dy=0;dy<M;dy++)
+				for(dx=0;dx<M;dx++)
+				{	
+					ar+=PIXR(A(buf,x*M+dx,y*M+dy));
+					ag+=PIXG(A(buf,x*M+dx,y*M+dy));
+					ab+=PIXB(A(buf,x*M+dx,y*M+dy));
+				}
+			ar/=M*M;ag/=M*M;ab/=M*M;
+			for(dy=0;dy<M;dy++)
+				for(dx=0;dx<M;dx++)
+				{
+					r+=DM(ar,PIXR(A(buf,x*M+dx,y*M+dy)));
+					nr+=DIS(ar,PIXR(A(buf,x*M+dx,y*M+dy)));
+					g+=DM(ag,PIXG(A(buf,x*M+dx,y*M+dy)));
+					ng+=DIS(ag,PIXG(A(buf,x*M+dx,y*M+dy)));
+					b+=DM(ab,PIXB(A(buf,x*M+dx,y*M+dy)));
+					nb+=DIS(ab,PIXB(A(buf,x*M+dx,y*M+dy)));
+				}
+			A(small,x,y)=PIXRGB((int)(r/nr),(int)(g/ng),(int)(b/nb));
+		}
+	ptiSmallFile = format::VideoBufferToPTI(small);
+	pngSmallFile = format::VideoBufferToPNG(small);
 
-	screenBuffer.Resize(1.0f/3.0f, true);
-	ptiSmallFile = format::VideoBufferToPTI(screenBuffer);
-	pngSmallFile = format::VideoBufferToPNG(screenBuffer);
-
-
+	
 
 	//writeFile(ppmFilename, ppmFile);
 	writeFile(ptiFilename, ptiFile);
