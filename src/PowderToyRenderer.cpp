@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 #define H(X) (X).Height
 #define A(B,X,Y) (B).Buffer[(Y)*W(B)+X]
 #define M 6
-#define DIS(A,X) abs(X-(A))+16
+#define DIS(A,X) pow((abs(X-(A))),1.6f)+16
 #define DM(A,X) (X)*(DIS(A,X))
 	VideoBuffer small = VideoBuffer(W(buf)/M,H(buf)/M);
 	int x,y,dx,dy;
