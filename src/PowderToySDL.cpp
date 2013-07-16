@@ -42,22 +42,27 @@
 #include "gui/Style.h"
 
 #include "client/HTTP.h"
+#include <android/log.h>
 
 using namespace std;
 
 #if defined(USE_SDL) && defined(LIN)
 #include <SDL_syswm.h>
 #endif
-#if defined(USE_SDL) && defined(LIN) && defined(SDL_VIDEO_DRIVER_X11)
+#if defined(USE_SDL) && defined(LIN) && defined(SDL_VIDEO_DRIVER_X11) && SDL_MAJOR_VERSION == 1
 SDL_SysWMinfo sdl_wminfo;
 Atom XA_CLIPBOARD, XA_TARGETS;
 #endif
 
 char *clipboardText = NULL;
 
-int desktopWidth = 1280, desktopHeight = 1024;
+int desktopWidth = 0, desktopHeight = 0;
 
 SDL_Surface * sdl_scrn;
+#if SDL_MAJOR_VERSION == 2
+SDL_Window* sdl_window;
+SDL_Renderer* sdl_renderer;
+#endif
 int scale = 1;
 bool fullscreen = false;
 
@@ -94,7 +99,7 @@ void ClipboardPush(char * text)
 		SetClipboardData(CF_TEXT, cbuffer);
 		CloseClipboard();
 	}
-#elif defined(LIN) && defined(SDL_VIDEO_DRIVER_X11)
+#elif defined(LIN) && defined(SDL_VIDEO_DRIVER_X11) && SDL_MAJOR_VERSION == 1
 	sdl_wminfo.info.x11.lock_func();
 	XSetSelectionOwner(sdl_wminfo.info.x11.display, XA_CLIPBOARD, sdl_wminfo.info.x11.window, CurrentTime);
 	XFlush(sdl_wminfo.info.x11.display);
@@ -144,6 +149,7 @@ void blit(pixel * vid)
 {
 	if(sdl_scrn)
 	{
+	    __android_log_print(ANDROID_LOG_INFO, "TPT", "blit");
 		pixel * src = vid;
 		int j, x = 0, y = 0, w = XRES+BARSIZE, h = YRES+MENUSIZE, pitch = XRES+BARSIZE;
 		pixel *dst;
@@ -181,7 +187,14 @@ void blit(pixel * vid)
 		}
 		if (SDL_MUSTLOCK(sdl_scrn))
 			SDL_UnlockSurface(sdl_scrn);
+#if SDL_MAJOR_VERSION == 1
 		SDL_UpdateRect(sdl_scrn,0,0,0,0);
+#else
+		SDL_Texture* tempTexture = SDL_CreateTextureFromSurface(sdl_renderer, sdl_scrn);
+		//SDL_RenderClear(sdl_renderer);
+		SDL_RenderCopy(sdl_renderer, tempTexture, NULL, NULL);
+		SDL_RenderPresent(sdl_renderer);
+#endif
 	}
 }
 void blit2(pixel * vid, int currentScale)
@@ -237,14 +250,20 @@ void blit2(pixel * vid, int currentScale)
 		}
 		if (SDL_MUSTLOCK(sdl_scrn))
 			SDL_UnlockSurface(sdl_scrn);
+#if SDL_MAJOR_VERSION == 1
 		SDL_UpdateRect(sdl_scrn,0,0,0,0);
+#else
+		SDL_Texture* tempTexture = SDL_CreateTextureFromSurface(sdl_renderer, sdl_scrn);
+		//SDL_RenderClear(sdl_renderer);
+		SDL_RenderCopy(sdl_renderer, tempTexture, NULL, NULL);
+		SDL_RenderPresent(sdl_renderer);
+#endif
 	}
 }
 #endif
 
 int SDLOpen()
 {
-	SDL_Surface * surface;
 #if defined(WIN) && defined(WINCONSOLE)
 	FILE * console = fopen("CON", "w" );
 #endif
@@ -253,10 +272,30 @@ int SDLOpen()
 		fprintf(stderr, "Initializing SDL: %s\n", SDL_GetError());
 		return 1;
 	}
+#if SDL_MAJOR_VERSION == 1
 	const SDL_VideoInfo * vidInfo = SDL_GetVideoInfo();
 	desktopWidth = vidInfo->current_w;
 	desktopHeight = vidInfo->current_h;
 	SDL_EnableUNICODE(1);
+#else
+	SDL_DisplayMode current;
+	for(int i = 0; i < SDL_GetNumVideoDisplays(); ++i)
+	{
+		int ret = SDL_GetCurrentDisplayMode(i, &current);
+
+		if (ret == 0)
+		{
+			if (current.h > desktopHeight && current.w > desktopWidth)
+			{
+				desktopWidth = current.w;
+				desktopHeight = current.h;
+			}
+		}
+	}
+	sdl_window = SDL_CreateWindow("The Powder Toy",  SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, XRES + BARSIZE, YRES + MENUSIZE, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+	sdl_renderer = SDL_CreateRenderer(sdl_window, -1, 0);
+
+#endif
 #if defined(WIN) && defined(WINCONSOLE)
 	//On Windows, SDL redirects stdout to stdout.txt, which can be annoying when debugging, here we redirect back to the console
 	if (console)
@@ -273,6 +312,7 @@ int SDLOpen()
 	    printf("%s : %d\n", SDL_GetError(), SysInfo.window);
 	    exit(-1);
 	}
+#if SDL_MAJOR_VERSION == 1
 	HWND WindowHandle = SysInfo.window;
 
 	// Use GetModuleHandle to get the Exe HMODULE/HINSTANCE
@@ -281,12 +321,18 @@ int SDLOpen()
 	HICON hIconBig = (HICON)LoadImage(hModExe, MAKEINTRESOURCE(101), IMAGE_ICON, 32, 32, LR_SHARED);
 	SendMessage(WindowHandle, WM_SETICON, ICON_SMALL, (LPARAM)hIconSmall);
 	SendMessage(WindowHandle, WM_SETICON, ICON_BIG, (LPARAM)hIconBig);
-#elif defined(LIN)
+#endif
+#elif defined(LIN) && SDL_MAJOR_VERSION == 1
 	SDL_Surface *icon = SDL_CreateRGBSurfaceFrom(app_icon, 16, 16, 32, 64, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
 	SDL_WM_SetIcon(icon, NULL);
 #endif
-
+#if SDL_MAJOR_VERSION == 1
 	SDL_WM_SetCaption("The Powder Toy", "Powder Toy");
+#else
+	//SDL_Surface *icon = SDL_CreateRGBSurfaceFrom(app_icon, 16, 16, 32, 64, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+	//SDL_SetWindowIcon(sdl_window, icon);
+#endif
+
 	//SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 	atexit(SDL_Quit);
 
@@ -298,10 +344,16 @@ SDL_Surface * SDLSetScreen(int newScale, bool newFullscreen)
 	scale = newScale;
 	fullscreen = newFullscreen;
 	SDL_Surface * surface;
+#if SDL_MAJOR_VERSION == 1
 #ifndef OGLI
 	surface = SDL_SetVideoMode((XRES + BARSIZE) * newScale, (YRES + MENUSIZE) * newScale, 32, SDL_SWSURFACE | (newFullscreen?SDL_FULLSCREEN:0));
 #else
 	surface = SDL_SetVideoMode((XRES + BARSIZE) * newScale, (YRES + MENUSIZE) * newScale, 32, SDL_OPENGL | SDL_RESIZABLE | (newFullscreen?SDL_FULLSCREEN:0));
+#endif
+#else
+	SDL_SetWindowSize(sdl_window, (XRES + BARSIZE) * newScale, (YRES + MENUSIZE) * newScale);
+	SDL_SetWindowFullscreen(sdl_window, newFullscreen?SDL_WINDOW_FULLSCREEN:0);
+	surface = SDL_GetWindowSurface(sdl_window);
 #endif
 	return surface;
 }
@@ -394,15 +446,28 @@ void EngineProcess()
 					engine->Exit();
 				break;
 			case SDL_KEYDOWN:
+#if SDL_MAJOR_VERSION == 1
 				engine->onKeyPress(event.key.keysym.sym, event.key.keysym.unicode, event.key.keysym.mod&KEY_MOD_LSHIFT, event.key.keysym.mod&KEY_MOD_LCONTROL, event.key.keysym.mod&KEY_MOD_LALT);
+#else
+				engine->onKeyPress(event.key.keysym.sym, event.key.keysym.sym, event.key.keysym.mod&KEY_MOD_LSHIFT, event.key.keysym.mod&KEY_MOD_LCONTROL, event.key.keysym.mod&KEY_MOD_LALT);
+#endif
 				break;
 			case SDL_KEYUP:
+#if SDL_MAJOR_VERSION == 1
 				engine->onKeyRelease(event.key.keysym.sym, event.key.keysym.unicode, event.key.keysym.mod&KEY_MOD_LSHIFT, event.key.keysym.mod&KEY_MOD_LCONTROL, event.key.keysym.mod&KEY_MOD_LALT);
+#else
+				engine->onKeyRelease(event.key.keysym.sym, event.key.keysym.sym, event.key.keysym.mod&KEY_MOD_LSHIFT, event.key.keysym.mod&KEY_MOD_LCONTROL, event.key.keysym.mod&KEY_MOD_LALT);
+#endif
 				break;
 			case SDL_MOUSEMOTION:
 				engine->onMouseMove(event.motion.x*inputScale, event.motion.y*inputScale);
 				break;
+#if SDL_MAJOR_VERSION == 2
+			case SDL_MOUSEWHEEL:
+				engine->onMouseWheel(event.wheel.x*inputScale, event.wheel.y*inputScale, (event.wheel.y>0)?1:-1);
+#endif
 			case SDL_MOUSEBUTTONDOWN:
+#if SDL_MAJOR_VERSION == 1
 				if(event.button.button == SDL_BUTTON_WHEELUP)
 				{
 					engine->onMouseWheel(event.motion.x*inputScale, event.motion.y*inputScale, 1);
@@ -412,12 +477,15 @@ void EngineProcess()
 					engine->onMouseWheel(event.motion.x*inputScale, event.motion.y*inputScale, -1);
 				}
 				else
+#endif
 				{
 					engine->onMouseClick(event.motion.x*inputScale, event.motion.y*inputScale, event.button.button);
 				}
 				break;
 			case SDL_MOUSEBUTTONUP:
+#if SDL_MAJOR_VERSION == 1
 				if(event.button.button != SDL_BUTTON_WHEELUP && event.button.button != SDL_BUTTON_WHEELDOWN)
+#endif
 					engine->onMouseUnclick(event.motion.x*inputScale, event.motion.y*inputScale, event.button.button);
 				break;
 #ifdef OGLI
@@ -443,7 +511,7 @@ void EngineProcess()
 				}
 				break;
 #endif
-#if defined (USE_SDL) && defined(LIN) && defined(SDL_VIDEO_DRIVER_X11)
+#if defined (USE_SDL) && defined(LIN) && defined(SDL_VIDEO_DRIVER_X11) && SDL_MAJOR_VERSION == 1
 			case SDL_SYSWMEVENT:
 				if (event.syswm.msg->subsystem != SDL_SYSWM_X11)
 					break;
@@ -747,6 +815,8 @@ int main(int argc, char * argv[])
 	LoadWindowPosition(tempScale);
 #endif
 	sdl_scrn = SDLSetScreen(tempScale, tempFullscreen);
+	if(!sdl_scrn)
+	    __android_log_print(ANDROID_LOG_INFO, "TPT", SDL_GetError());
 
 #ifdef OGLI
 	SDL_GL_SetAttribute (SDL_GL_DOUBLEBUFFER, 1);
@@ -760,7 +830,7 @@ int main(int argc, char * argv[])
 		exit(-1);
 	}
 #endif
-#if defined (USE_SDL) && defined(LIN) && defined(SDL_VIDEO_DRIVER_X11)
+#if defined (USE_SDL) && defined(LIN) && defined(SDL_VIDEO_DRIVER_X11) && SDL_MAJOR_VERSION == 1
 	SDL_EventState(SDL_SYSWMEVENT, SDL_ENABLE);
 	SDL_VERSION(&sdl_wminfo.version);
 	SDL_GetWMInfo(&sdl_wminfo);
@@ -779,7 +849,7 @@ int main(int argc, char * argv[])
 	engine->Begin(XRES+BARSIZE, YRES+MENUSIZE);
 	engine->SetFastQuit(Client::Ref().GetPrefBool("FastQuit", true));
 
-#if !defined(DEBUG) && !defined(_DEBUG)
+#if !defined(DEBUG) && !defined(_DEBUG) && !defined(ANDROID)
 	//Get ready to catch any dodgy errors
 	signal(SIGSEGV, SigHandler);
 	signal(SIGFPE, SigHandler);
