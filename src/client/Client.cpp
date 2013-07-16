@@ -60,6 +60,8 @@ extern "C"
 #endif
 }
 
+TPT_INLINE char toupper(char a){return a>='a'&&a<='z'?a-32:a;}
+
 Client::Client():
 	authUser(0, ""),
 	updateAvailable(false),

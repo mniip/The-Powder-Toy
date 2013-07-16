@@ -40,6 +40,8 @@ TODO:
 
 */
 
+TPT_INLINE int isspace(char a){return a==' '||a=='\t'||a=='\n'||a=='\r'||a=='\v';}
+
 namespace json
 {
 
@@ -270,7 +272,6 @@ TPT_NO_INLINE void Reader::Scan(Tokens& tokens, InputStream& inputStream)
       tokens.push_back(token);
    }
 }
-
 
 TPT_NO_INLINE void Reader::EatWhiteSpace(InputStream& inputStream)
 {
