@@ -178,7 +178,7 @@ extern unsigned char ZSIZE;
 #if defined(_MSC_VER)
 #define TPT_INLINE _inline
 #define TPT_NO_INLINE
-#elif defined(__llvm__)
+#elif defined(__llvm__) || defined(ANDROID)
 #define TPT_INLINE
 #define TPT_NO_INLINE
 #else
