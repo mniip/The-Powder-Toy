@@ -42,7 +42,6 @@
 #include "gui/Style.h"
 
 #include "client/HTTP.h"
-#include <android/log.h>
 
 using namespace std;
 
@@ -149,7 +148,6 @@ void blit(pixel * vid)
 {
 	if(sdl_scrn)
 	{
-	    __android_log_print(ANDROID_LOG_INFO, "TPT", "blit");
 		pixel * src = vid;
 		int j, x = 0, y = 0, w = XRES+BARSIZE, h = YRES+MENUSIZE, pitch = XRES+BARSIZE;
 		pixel *dst;
@@ -194,6 +192,7 @@ void blit(pixel * vid)
 		//SDL_RenderClear(sdl_renderer);
 		SDL_RenderCopy(sdl_renderer, tempTexture, NULL, NULL);
 		SDL_RenderPresent(sdl_renderer);
+		SDL_DestroyTexture(tempTexture);
 #endif
 	}
 }
@@ -257,6 +256,7 @@ void blit2(pixel * vid, int currentScale)
 		//SDL_RenderClear(sdl_renderer);
 		SDL_RenderCopy(sdl_renderer, tempTexture, NULL, NULL);
 		SDL_RenderPresent(sdl_renderer);
+		SDL_DestroyTexture(tempTexture);
 #endif
 	}
 }
@@ -292,8 +292,8 @@ int SDLOpen()
 			}
 		}
 	}
-	sdl_window = SDL_CreateWindow("The Powder Toy",  SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, XRES + BARSIZE, YRES + MENUSIZE, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
-	sdl_renderer = SDL_CreateRenderer(sdl_window, -1, 0);
+	sdl_window = SDL_CreateWindow("The Powder Toy",  SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, XRES + BARSIZE, YRES + MENUSIZE, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_SHOWN);
+	sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_SOFTWARE);
 
 #endif
 #if defined(WIN) && defined(WINCONSOLE)
@@ -815,8 +815,6 @@ int main(int argc, char * argv[])
 	LoadWindowPosition(tempScale);
 #endif
 	sdl_scrn = SDLSetScreen(tempScale, tempFullscreen);
-	if(!sdl_scrn)
-	    __android_log_print(ANDROID_LOG_INFO, "TPT", SDL_GetError());
 
 #ifdef OGLI
 	SDL_GL_SetAttribute (SDL_GL_DOUBLEBUFFER, 1);
