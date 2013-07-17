@@ -21,9 +21,6 @@ extern "C" void Java_org_libsdl_app_SDLActivity_nativeResume(JNIEnv*e,jclass c);
 extern "C" void JNI(nativeResume)(JNIEnv*e,jclass c,jint a){Java_org_libsdl_app_SDLActivity_nativeResume(e,c);}
 
 extern "C" void JNI(nativeQuit)(JNIEnv*e,jclass c,jint a){}
-extern "C" void JNI(onNativeAccel)(JNIEnv*e,jclass c,jint x,jint y,jint z){}
-
-extern "C" void Android_JNI_CreateContext(int a,int b,int c,int d,int e,int f,int g,int h,int i,int j,int k);
 
 extern "C" void JNI(nativeInit)(JNIEnv*env,jclass cls,jobject obj)
 {
@@ -51,30 +48,16 @@ extern "C" void JNI(onNativeResize)(JNIEnv*env,jclass cls,jint w,jint h,jint o)
 int last_x=0;
 int last_y=0;
 
+extern "C" void Java_org_libsdl_app_SDLActivity_onNativeTouch(JNIEnv*e,jclass c,jint a,jint b,jint d,jfloat f,jfloat g,jfloat i);
 extern "C" void JNI(onNativeTouch)(JNIEnv*env,jclass cls,jint devid,jint fingerid,jint action,jfloat x,jfloat y,jfloat p)
 {
-	int rx=x*screen_width;
-	int ry=y*screen_height;
-	if(action==2)
-	{
-		SDL_MouseMotionEvent e={};
-		e.type=SDL_MOUSEMOTION;
-		e.x=rx;
-		e.y=ry;
-		e.xrel=rx-last_x;
-		e.yrel=ry-last_y;
-		SDL_PushEvent((SDL_Event*)&e);
-	}
-	else
-	{
-		SDL_MouseButtonEvent e={};
-		e.type=action?SDL_MOUSEBUTTONUP:SDL_MOUSEBUTTONDOWN;
-		e.button=SDL_BUTTON_LEFT;
-		e.state=action?SDL_RELEASED:SDL_PRESSED;
-		e.x=rx;
-		e.y=ry;
-		SDL_PushEvent((SDL_Event*)&e);
-	}
-	last_x=rx;
-	last_y=ry;
+	Java_org_libsdl_app_SDLActivity_onNativeTouch(env,cls,devid,fingerid,action,x,y,p);
+	// TODO: add stuff here
+}
+
+extern "C" void Java_org_libsdl_app_SDLActivity_onNativeAccel(JNIEnv*e,jclass c,jint x,jint y,jint z);
+extern "C" void JNI(onNativeAccel)(JNIEnv*env,jclass cls,jint x,jint y,jint z)
+{
+	Java_org_libsdl_app_SDLActivity_onNativeAccel(env,cls,x,y,z);
+	// TODO: add stuff here
 }
