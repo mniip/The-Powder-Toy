@@ -48,15 +48,21 @@ extern "C" void JNI(onNativeResize)(JNIEnv*env,jclass cls,jint w,jint h,jint o)
 	screen_height=h;
 }
 
+int last_x=0;
+int last_y=0;
+
 extern "C" void JNI(onNativeTouch)(JNIEnv*env,jclass cls,jint devid,jint fingerid,jint action,jfloat x,jfloat y,jfloat p)
 {
+	int rx=x*screen_width;
+	int ry=y*screen_height;
 	if(action==2)
 	{
 		SDL_MouseMotionEvent e={};
 		e.type=SDL_MOUSEMOTION;
-		e.x=x*screen_width;
-		e.y=y*screen_height;
-		e.xrel=e.yrel=0;
+		e.x=rx;
+		e.y=ry;
+		e.xrel=rx-last_x;
+		e.yrel=ry-last_y;
 		SDL_PushEvent((SDL_Event*)&e);
 	}
 	else
@@ -65,8 +71,10 @@ extern "C" void JNI(onNativeTouch)(JNIEnv*env,jclass cls,jint devid,jint fingeri
 		e.type=action?SDL_MOUSEBUTTONUP:SDL_MOUSEBUTTONDOWN;
 		e.button=SDL_BUTTON_LEFT;
 		e.state=action?SDL_RELEASED:SDL_PRESSED;
-		e.x=x*screen_width;
-		e.y=y*screen_height;
+		e.x=rx;
+		e.y=ry;
 		SDL_PushEvent((SDL_Event*)&e);
 	}
+	last_x=rx;
+	last_y=ry;
 }
