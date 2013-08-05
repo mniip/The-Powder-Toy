@@ -1,6 +1,7 @@
 #include <string>
 #include "Config.h"
 #include "Point.h"
+#include "graphics/Utf8.h"
 #include "Label.h"
 #include "Keys.h"
 #include "ContextMenu.h"
@@ -76,13 +77,13 @@ void Label::updateMultiline()
 		std::copy(text.begin(), text.end(), rawText);
 		rawText[text.length()] = 0;
 
-		char c, pc = 0;
+		int c, pc = 0;
 		int charIndex = 0;
 
 		int wordWidth = 0;
 		int lineWidth = 0;
 		char * wordStart = NULL;
-		while(c = rawText[charIndex++])
+		while(c = Utf8::ord(rawText+charIndex))
 		{
 			switch(c)
 			{
@@ -121,6 +122,7 @@ void Label::updateMultiline()
 				lines++;
 			}
 			pc = c;
+			charIndex += Utf8::step(rawText+charIndex);
 		}
 		if(autoHeight)
 		{

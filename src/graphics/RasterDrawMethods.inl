@@ -1,3 +1,4 @@
+#include "Utf8.h"
 #include "font.h"
 #include <math.h>
 
@@ -22,12 +23,13 @@ int PIXELMETHODS_CLASS::drawtext(int x, int y, const char *s, int r, int g, int 
 	int oR = r, oG = g, oB = b;
 	int characterX = x, characterY = y;
 	int startX = characterX;
-	for (; *s; s++)
+	for (; *s;)
 	{
 		if (*s == '\n')
 		{
 			characterX = startX;
 			characterY += FONT_H+2;
+			s++;
 		}
 		else if (*s == '\x0F')
 		{
@@ -38,13 +40,14 @@ int PIXELMETHODS_CLASS::drawtext(int x, int y, const char *s, int r, int g, int 
 			r = (unsigned char)s[1];
 			g = (unsigned char)s[2];
 			b = (unsigned char)s[3];
-			s += 3;
+			s += 4;
 		}
 		else if (*s == '\x0E')
 		{
 			r = oR;
 			g = oG;
 			b = oB;
+			s++;
 		}
 		else if (*s == '\x01')
 		{
@@ -52,6 +55,7 @@ int PIXELMETHODS_CLASS::drawtext(int x, int y, const char *s, int r, int g, int 
 			r = 255-r;
 			g = 255-g;
 			b = 255-b;
+			s++;
 		}
 		else if (*s == '\b')
 		{
@@ -93,11 +97,12 @@ int PIXELMETHODS_CLASS::drawtext(int x, int y, const char *s, int r, int g, int 
 				g = 255-g;
 				b = 255-b;
 			}
-			s++;
+			s += 2;
 		}
 		else
 		{
-			characterX = drawchar(characterX, characterY, *(unsigned char *)s, r, g, b, a);
+			characterX = drawchar(characterX, characterY, Utf8::ord(s), r, g, b, a);
+			s += Utf8::step(s);
 		}
 	}
 	return x;
@@ -111,7 +116,7 @@ int PIXELMETHODS_CLASS::drawtext(int x, int y, std::string s, int r, int g, int 
 TPT_INLINE int PIXELMETHODS_CLASS::drawchar(int x, int y, int c, int r, int g, int b, int a)
 {
 	int i, j, w, bn = 0, ba = 0;
-	char *rp = font_data + font_ptrs[c];
+	char *rp = font_data + font_ptrs[map_char(c)];
 	w = *(rp++);
 	for (j=0; j<FONT_H; j++)
 		for (i=0; i<w; i++)
@@ -131,7 +136,7 @@ TPT_INLINE int PIXELMETHODS_CLASS::drawchar(int x, int y, int c, int r, int g, i
 TPT_NO_INLINE int PIXELMETHODS_CLASS::addchar(int x, int y, int c, int r, int g, int b, int a)
 {
 	int i, j, w, bn = 0, ba = 0;
-	char *rp = font_data + font_ptrs[c];
+	char *rp = font_data + font_ptrs[map_char(c)];
 	w = *(rp++);
 	for (j=0; j<FONT_H; j++)
 		for (i=0; i<w; i++)

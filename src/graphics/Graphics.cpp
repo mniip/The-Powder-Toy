@@ -5,6 +5,7 @@
 #include "Config.h"
 #include "Misc.h"
 #include "Graphics.h"
+#include "Utf8.h"
 #define INCLUDE_FONTDATA
 #include "font.h"
 #ifdef HIGH_QUALITY_RESAMPLE
@@ -92,7 +93,7 @@ void VideoBuffer::Resize(int width, int height, bool resample, bool fixedRatio)
 int VideoBuffer::SetCharacter(int x, int y, int c, int r, int g, int b, int a)
 {
 	int i, j, w, bn = 0, ba = 0;
-	char *rp = font_data + font_ptrs[c];
+	char *rp = font_data + font_ptrs[map_char(c)];
 	w = *(rp++);
 	for (j=0; j<FONT_H; j++)
 		for (i=0; i<w; i++)
@@ -112,7 +113,7 @@ int VideoBuffer::SetCharacter(int x, int y, int c, int r, int g, int b, int a)
 int VideoBuffer::BlendCharacter(int x, int y, int c, int r, int g, int b, int a)
 {
 	int i, j, w, bn = 0, ba = 0;
-	char *rp = font_data + font_ptrs[c];
+	char *rp = font_data + font_ptrs[map_char(c)];
 	w = *(rp++);
 	for (j=0; j<FONT_H; j++)
 		for (i=0; i<w; i++)
@@ -132,7 +133,7 @@ int VideoBuffer::BlendCharacter(int x, int y, int c, int r, int g, int b, int a)
 int VideoBuffer::AddCharacter(int x, int y, int c, int r, int g, int b, int a)
 {
 	int i, j, w, bn = 0, ba = 0;
-	char *rp = font_data + font_ptrs[c];
+	char *rp = font_data + font_ptrs[map_char(c)];
 	w = *(rp++);
 	for (j=0; j<FONT_H; j++)
 		for (i=0; i<w; i++)
@@ -572,46 +573,49 @@ pixel *Graphics::rescale_img(pixel *src, int sw, int sh, int *qw, int *qh, int f
 int Graphics::textwidth(const char *s)
 {
 	int x = 0;
-	for (; *s; s++)
+	for (; *s;)
 	{
 		if(((char)*s)=='\b')
 		{
 			if(!s[1]) break;
-			s++;
+			s+=2;
 			continue;
 		} else if(*s == '\x0F') {
 			if(!s[1] || !s[2] || !s[3]) break;
-			s+=3;
+			s+=4;
 			continue;
 		}
-		x += font_data[font_ptrs[(int)(*(unsigned char *)s)]];
+		x += font_data[font_ptrs[map_char(Utf8::ord(s))]];
+		s+=Utf8::step(s);
 	}
 	return x-1;
 }
 
-int Graphics::CharWidth(char c)
+int Graphics::CharWidth(int c)
 {
-	return font_data[font_ptrs[(int)c]];
+	return font_data[font_ptrs[map_char(c)]];
 }
 
 int Graphics::textnwidth(char *s, int n)
 {
 	int x = 0;
-	for (; *s; s++)
+	for (; *s;)
 	{
 		if (!n)
+			s++;
 			break;
-		if(((char)*s)=='\b')
+		if(*s=='\b')
 		{
 			if(!s[1]) break;
-			s++;
+			s+=2;
 			continue;
 		} else if(*s == '\x0F') {
 			if(!s[1] || !s[2] || !s[3]) break;
-			s+=3;
+			s+=4;
 			continue;
 		}
-		x += font_data[font_ptrs[(int)(*(unsigned char *)s)]];
+		x += font_data[font_ptrs[Utf8::ord(s)]];
+		s+=Utf8::step(s);
 		n--;
 	}
 	return x-1;
@@ -631,18 +635,20 @@ void Graphics::textnpos(char *s, int n, int w, int *cx, int *cy)
 			x = 0;
 			y += FONT_H+2;
 		}
-		for (; *s && --wordlen>=-1; s++)
+		for (; *s && --wordlen>=-1;)
 		{
 			if (!n) {
+				s++;
 				break;
 			}
-			x += font_data[font_ptrs[(int)(*(unsigned char *)s)]];
+			x += font_data[font_ptrs[map_char(Utf8::ord(s))]];
 			if (x>=w)
 			{
 				x = 0;
 				y += FONT_H+2;
 			}
 			n--;
+			s+=Utf8::step(s);
 		}
 	}
 	*cx = x-1;
@@ -652,23 +658,24 @@ void Graphics::textnpos(char *s, int n, int w, int *cx, int *cy)
 int Graphics::textwidthx(char *s, int w)
 {
 	int x=0,n=0,cw;
-	for (; *s; s++)
+	for (; *s;)
 	{
 		if((char)*s == '\b')
 		{
 			if(!s[1]) break;
-			s++;
+			s+=2;
 			continue;
 		} else if (*s == '\x0F')
 		{
 			if(!s[1] || !s[2] || !s[3]) break;
-			s+=3;
+			s+=4;
 			continue;
 		}
-		cw = font_data[font_ptrs[(int)(*(unsigned char *)s)]];
+		cw = font_data[font_ptrs[map_char(Utf8::ord(s))]];
 		if (x+(cw/2) >= w)
 			break;
 		x += cw;
+		s+=Utf8::step(s);
 		n++;
 	}
 	return n;
@@ -677,7 +684,7 @@ int Graphics::textwidthx(char *s, int w)
 int Graphics::PositionAtCharIndex(char *s, int charIndex, int & positionX, int & positionY)
 {
 	int x = 0, y = 0, lines = 1;
-	for (; *s; s++)
+	for (; *s;)
 	{
 		if (!charIndex)
 			break;
@@ -686,19 +693,21 @@ int Graphics::PositionAtCharIndex(char *s, int charIndex, int & positionX, int &
 			x = 0;
 			y += FONT_H+2;
 			charIndex--;
+			s++;
 			continue;
 		} else if(*s =='\b') {
 			if(!s[1]) break;
-			s++;
+			s+=2;
 			charIndex-=2;
 			continue;
 		} else if(*s == '\x0F') {
 			if(!s[1] || !s[2] || !s[3]) break;
-			s+=3;
+			s+=4;
 			charIndex-=4;
 			continue;
 		}
-		x += font_data[font_ptrs[(int)(*(unsigned char *)s)]];
+		x += font_data[font_ptrs[map_char(Utf8::ord(s))]];
+		s+=Utf8::step(s);
 		charIndex--;
 	}
 	positionX = x;
@@ -709,28 +718,30 @@ int Graphics::PositionAtCharIndex(char *s, int charIndex, int & positionX, int &
 int Graphics::CharIndexAtPosition(char *s, int positionX, int positionY)
 {
 	int x=0, y=0,charIndex=0,cw;
-	for (; *s; s++)
+	for (; *s;)
 	{
 		if(*s == '\n') {
 			x = 0;
 			y += FONT_H+2;
 			charIndex++;
+			s++;
 			continue;
 		} else if(*s == '\b') {
 			if(!s[1]) break;
-			s++;
+			s+=2;
 			charIndex+=2;
 			continue;
 		} else if (*s == '\x0F') {
 			if(!s[1] || !s[2] || !s[3]) break;
-			s+=3;
+			s+=4;
 			charIndex+=4;
 			continue;
 		}
-		cw = font_data[font_ptrs[(int)(*(unsigned char *)s)]];
+		cw = font_data[font_ptrs[map_char(Utf8::ord(s))]];
 		if ((x+(cw/2) >= positionX && y+FONT_H >= positionY) || y > positionY)
 			break;
 		x += cw;
+		s+=Utf8::step(s);
 		charIndex++;
 	}
 	return charIndex;
@@ -749,9 +760,9 @@ int Graphics::textposxy(char *s, int width, int w, int h)
 			x = 0;
 			y += FONT_H+2;
 		}
-		for (; *s && --wordlen>=-1; s++)
+		for (; *s && --wordlen>=-1;)
 		{
-			cw = font_data[font_ptrs[(int)(*(unsigned char *)s)]];
+			cw = font_data[font_ptrs[map_char(Utf8::ord(s))]];
 			if ((x+(cw/2) >= w && y+6 >= h)||(y+6 >= h+FONT_H+2))
 				return n++;
 			x += cw;
@@ -760,6 +771,7 @@ int Graphics::textposxy(char *s, int width, int w, int h)
 				y += FONT_H+2;
 			}
 			n++;
+			s+=Utf8::step(s);
 		}
 	}
 	return n;
@@ -778,32 +790,34 @@ int Graphics::textwrapheight(char *s, int width)
 			x = 0;
 			height += FONT_H+2;
 		}
-		for (; *s && --wordlen>=-1; s++)
+		for (; *s && --wordlen>=-1;)
 		{
 			if (*s == '\n')
 			{
 				x = 0;
 				height += FONT_H+2;
+				s++;
 			}
 			else if (*s == '\b')
 			{
 				if(!s[1]) break;
-				s++;
+				s+=2;
 			}
 			else if (*s == '\x0F')
 			{
 				if(!s[1] || !s[2] || !s[3]) break;
-				s+=3;
+				s+=4;
 			}
 			else
 			{
-				cw = font_data[font_ptrs[(int)(*(unsigned char *)s)]];
+				cw = font_data[font_ptrs[map_char(Utf8::ord(s))]];
 				if (x+cw>=width)
 				{
 					x = 0;
 					height += FONT_H+2;
 				}
 				x += cw;
+				s+=Utf8::step(s);
 			}
 		}
 	}
@@ -820,28 +834,30 @@ void Graphics::textsize(const char * s, int & width, int & height)
 	}
 
 	int cHeight = FONT_H, cWidth = 0, lWidth = 0;
-	for (; *s; s++)
+	for (; *s;)
 	{
 		if (*s == '\n')
 		{
 			cWidth = 0;
 			cHeight += FONT_H+2;
+			s++;
 		}
 		else if (*s == '\x0F')
 		{
 			if(!s[1] || !s[2] || !s[1]) break;
-			s+=3;
+			s+=4;
 		}
 		else if (*s == '\b')
 		{
 			if(!s[1]) break;
-			s++;
+			s+=2;
 		}
 		else
 		{
-			cWidth += font_data[font_ptrs[(int)(*(unsigned char *)s)]];
+			cWidth += font_data[font_ptrs[map_char(Utf8::ord(s))]];
 			if(cWidth>lWidth)
 				lWidth = cWidth;
+			s+=Utf8::step(s);
 		}
 	}
 	width = lWidth;
