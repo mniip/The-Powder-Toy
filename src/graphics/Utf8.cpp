@@ -77,7 +77,7 @@ int Utf8::ord(const char* s)
 		return s[0];
 }
 
-void chr(char* s,int k)
+void Utf8::chr(char* s,int k)
 {
 	if(k>0x7F)
 		if(k>0x07FF)
@@ -86,22 +86,34 @@ void chr(char* s,int k)
 					chr(s,INVALID_CODEPOINT);
 				else
 				{
-					s[0]=0xF0+k>>18;
-					s[1]=0x80+(k>>12&0x3F);
-					s[2]=0x80+(k>>6&0x3F);
-					s[3]=0x80+(k&0x3F);
+					s[0]=0xF0|k>>18;
+					s[1]=0x80|(k>>12&0x3F);
+					s[2]=0x80|(k>>6&0x3F);
+					s[3]=0x80|(k&0x3F);
+					s[4]=0;
 				}
 			else
 			{
-				s[0]=0xE0+k>>12;
-				s[1]=0x80+(k>>6&0x3F);
-				s[2]=0x80+(k&0x3F);
+				s[0]=0xE0|k>>12;
+				s[1]=0x80|(k>>6&0x3F);
+				s[2]=0x80|(k&0x3F);
+				s[3]=0;
 			}
 		else
 		{
-			s[0]=0xC0+k>>6;
-			s[1]=0x80+(k&0x3F);
+			s[0]=0xC0|k>>6;
+			s[1]=0x80|(k&0x3F);
+			s[2]=0;
 		}
 	else
+	{
 		s[0]=k;
+		s[1]=0;
+	}
+}
+std::string Utf8::chr(int k)
+{
+	char r[5];
+	chr(r,k);
+	return std::string(r);
 }

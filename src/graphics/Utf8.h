@@ -1,3 +1,4 @@
+#include <string>
 class Utf8
 {
 public:
@@ -6,4 +7,5 @@ public:
 	static int len(const char* s);
 	static int ord(const char* s);
 	static void chr(char* s,int k);
+	static std::string chr(int k);
 };
