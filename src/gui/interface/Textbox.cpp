@@ -7,6 +7,7 @@
 #include "gui/interface/Textbox.h"
 #include "gui/interface/Keys.h"
 #include "ContextMenu.h"
+#include "graphics/Utf8.h"
 
 using namespace ui;
 
@@ -62,8 +63,11 @@ void Textbox::SetText(std::string newText)
 
 	if(masked)
 	{
-		std::string maskedText = std::string(newText);
-		std::fill(maskedText.begin(), maskedText.end(), '\x8D');
+		int i;
+		std::string c = Utf8::chr(0x8D);
+		std::string maskedText = "";
+		for(i=0;i<backingText.length();i++)
+			maskedText += c;
 		Label::SetText(maskedText);
 	}
 	else
@@ -145,8 +149,11 @@ void Textbox::cutSelection()
 
 	if(masked)
 	{
-		std::string maskedText = std::string(backingText);
-		std::fill(maskedText.begin(), maskedText.end(), '\x8D');
+		int i;
+		std::string c = Utf8::chr(0x8D);
+		std::string maskedText = "";
+		for(i=0;i<backingText.length();i++)
+			maskedText += c;
 		Label::SetText(maskedText);
 	}
 	else
@@ -237,8 +244,11 @@ void Textbox::pasteIntoSelection()
 
 	if(masked)
 	{
-		std::string maskedText = std::string(backingText);
-		std::fill(maskedText.begin(), maskedText.end(), '\x8D');
+		int i;
+		std::string c = Utf8::chr(0x8D);
+		std::string maskedText = "";
+		for(i=0;i<backingText.length();i++)
+			maskedText += c;
 		Label::SetText(maskedText);
 	}
 	else
@@ -452,8 +462,11 @@ void Textbox::OnVKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool
 	{
 		if(masked)
 		{
-			std::string maskedText = std::string(backingText);
-			std::fill(maskedText.begin(), maskedText.end(), '\x8D');
+			int i;
+			std::string c = Utf8::chr(0x8D);
+			std::string maskedText = "";
+			for(i=0;i<backingText.length();i++)
+				maskedText += c;
 			Label::SetText(maskedText);
 		}
 		else

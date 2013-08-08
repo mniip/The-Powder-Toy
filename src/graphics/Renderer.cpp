@@ -808,7 +808,7 @@ void Renderer::DrawWalls()
 						if (bmap[j][i]==WL_STREAM && i!=x && j!=y)
 							break;
 					}
-					drawtext(x*CELL, y*CELL-2, "\x8D", 255, 255, 255, 128);
+					drawchar(x*CELL, y*CELL-2, 0x8D, 255, 255, 255, 128);
 				}
 
 				// when in blob view, draw some blobs

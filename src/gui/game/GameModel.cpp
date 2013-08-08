@@ -263,7 +263,7 @@ void GameModel::BuildMenus()
 	//Create menus
 	for(int i = 0; i < SC_TOTAL; i++)
 	{
-		menuList.push_back(new Menu((const char)sim->msections[i].icon[0], sim->msections[i].name));
+		menuList.push_back(new Menu(sim->msections[i].icon, sim->msections[i].name));
 	}
 
 	//Build menus from Simulation elements

@@ -4,6 +4,7 @@
 #include "SaveButton.h"
 #include "client/SaveInfo.h"
 #include "graphics/Graphics.h"
+#include "graphics/Utf8.h"
 #include "Engine.h"
 #include "client/requestbroker/RequestBroker.h"
 #include "simulation/SaveRenderer.h"
@@ -38,27 +39,28 @@ SaveButton::SaveButton(Point position, Point size, SaveInfo * save):
 			name += "...";
 		}
 
-		std::string votes, icon;
+		std::string votes;
 
 		votes = format::NumberToString<int>(save->GetVotesUp()-save->GetVotesDown());
-		icon += 0xBB;
+		votesBackground = Utf8::chr(0xBB);
+		votesBackground2 = Utf8::chr(0xAD);
 		for (int j = 1; j < votes.length(); j++)
-			icon += 0xBC;
-		icon += 0xB9;
-		icon += 0xBA;
+		{
+			votesBackground += Utf8::chr(0xBC);
+			votesBackground2 += Utf8::chr(0xAE);
+		}
+		votesBackground += Utf8::chr(0xB9);
+		votesBackground2 += Utf8::chr(0xAB);
+		votesBackground += Utf8::chr(0xBA);
+		votesBackground2 += Utf8::chr(0xAC);
 
-		votesBackground = icon;
-
-		for (std::string::iterator iter = icon.begin(), end = icon.end(); iter != end; ++iter)
-			*iter -= 14;
-
-		votesBackground2 = icon;
+		votesString = "";
 
 		for (std::string::iterator iter = votes.begin(), end = votes.end(); iter != end; ++iter)
-			if(*iter != '-')
-				*iter += 127;
-
-		votesString = votes;
+			if(*iter == '-')
+				votesString += '-';
+			else
+				votesString += Utf8::chr(*iter+127);
 
 		int voteMax = std::max(save->GetVotesUp(),save->GetVotesDown());
 		if (voteMax)
@@ -245,15 +247,15 @@ void SaveButton::Draw(const Point& screenPos)
 			int y = screenPos.Y-15+(Size.Y-thumbBoxSize.Y)/2+thumbBoxSize.Y;
 			g->fillrect(x+1, y+1, 7, 8, 255, 255, 255, 255);
 			if (isMouseInsideHistory) {
-				g->drawtext(x, y, "\xA6", 200, 100, 80, 255);
+				g->drawchar(x, y, 0xA6, 200, 100, 80, 255);
 			} else {
-				g->drawtext(x, y, "\xA6", 160, 70, 50, 255);
+				g->drawchar(x, y, 0xA6, 160, 70, 50, 255);
 			}
 		}
 		if (!save->GetPublished())
 		{
-			g->drawtext(screenPos.X, screenPos.Y-2, "\xCD", 255, 255, 255, 255);
-			g->drawtext(screenPos.X, screenPos.Y-2, "\xCE", 212, 151, 81, 255);
+			g->drawchar(screenPos.X, screenPos.Y-2, 0xCD, 255, 255, 255, 255);
+			g->drawchar(screenPos.X, screenPos.Y-2, 0xCE, 212, 151, 81, 255);
 		}
 	}
 	if(file)

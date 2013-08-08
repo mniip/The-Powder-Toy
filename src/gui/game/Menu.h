@@ -5,11 +5,11 @@
 
 class Menu
 {
-	char icon;
+	int icon;
 	string description;
 	vector<Tool*> tools;
 public:
-	Menu(char icon_, string description_):
+	Menu(int icon_, string description_):
 		icon(icon_),
 		description(description_),
 		tools(vector<Tool*>())
@@ -31,7 +31,7 @@ public:
 		return tools;
 	}
 
-	char GetIcon()
+	int GetIcon()
 	{
 		return icon;
 	}

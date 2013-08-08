@@ -18,6 +18,7 @@
 #include "QuickOption.h"
 #include "IntroText.h"
 #include "DecorationTool.h"
+#include "graphics/Utf8.h"
 
 
 class SplitButton;
@@ -415,7 +416,7 @@ GameView::GameView():
 			v->c->OpenElementSearch();
 		}
 	};
-	ui::Button * tempButton = new ui::Button(ui::Point(XRES+BARSIZE-16, YRES+MENUSIZE-32), ui::Point(15, 15), "\xE5", "Search for elements");
+	ui::Button * tempButton = new ui::Button(ui::Point(XRES+BARSIZE-16, YRES+MENUSIZE-32), ui::Point(15, 15), Utf8::chr(0xE5), "Search for elements");
 	tempButton->Appearance.Margin = ui::Border(0, 2, 3, 2);
 	tempButton->SetActionCallback(new ElementSearchAction(this));
 	AddComponent(tempButton);
@@ -569,9 +570,7 @@ void GameView::NotifyMenuListChanged(GameModel * sender)
 	vector<Menu*> menuList = sender->GetMenuList();
 	for (int i = menuList.size()-1; i >= 0; i--)
 	{
-		std::string tempString = "";
-		tempString += menuList[i]->GetIcon();
-		ui::Button * tempButton = new ui::Button(ui::Point(XRES+BARSIZE-16, currentY), ui::Point(15, 15), tempString, menuList[i]->GetDescription());
+		ui::Button * tempButton = new ui::Button(ui::Point(XRES+BARSIZE-16, currentY), ui::Point(15, 15), Utf8::chr(menuList[i]->GetIcon()), menuList[i]->GetDescription());
 		tempButton->Appearance.Margin = ui::Border(0, 2, 3, 2);
 		tempButton->SetTogglable(true);
 		tempButton->SetActionCallback(new MenuAction(this, i));
@@ -2039,7 +2038,7 @@ void GameView::OnDraw()
 	{
 		std::stringstream sampleInfo;
 		sampleInfo << recordingIndex;
-		sampleInfo << ". \x8E REC";
+		sampleInfo << ". " << Utf8::chr(0x8E) << " REC";
 
 		int textWidth = Graphics::textwidth((char*)sampleInfo.str().c_str());
 		g->fillrect(XRES-20-textWidth, 12, textWidth+8, 15, 0, 0, 0, 255*0.5);
