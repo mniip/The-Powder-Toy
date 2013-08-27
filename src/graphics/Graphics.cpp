@@ -684,31 +684,26 @@ int Graphics::textwidthx(char *s, int w)
 int Graphics::PositionAtCharIndex(char *s, int charIndex, int & positionX, int & positionY)
 {
 	int x = 0, y = 0, lines = 1;
-	for (; *s;)
+	const char *p=s+charIndex;
+	for (; *s && p>s;)
 	{
-		if (!charIndex)
-			break;
 		if(*s == '\n') {
 			lines++;
 			x = 0;
 			y += FONT_H+2;
-			charIndex--;
 			s++;
 			continue;
 		} else if(*s =='\b') {
 			if(!s[1]) break;
 			s+=2;
-			charIndex-=2;
 			continue;
 		} else if(*s == '\x0F') {
 			if(!s[1] || !s[2] || !s[3]) break;
 			s+=4;
-			charIndex-=4;
 			continue;
 		}
 		x += font_data[font_ptrs[map_char(Utf8::ord(s))]];
 		s+=Utf8::step(s);
-		charIndex--;
 	}
 	positionX = x;
 	positionY = y;
@@ -717,24 +712,22 @@ int Graphics::PositionAtCharIndex(char *s, int charIndex, int & positionX, int &
 
 int Graphics::CharIndexAtPosition(char *s, int positionX, int positionY)
 {
-	int x=0, y=0,charIndex=0,cw;
+	int x=0, y=0,cw;
+	const char* p=s;
 	for (; *s;)
 	{
 		if(*s == '\n') {
 			x = 0;
 			y += FONT_H+2;
-			charIndex++;
 			s++;
 			continue;
 		} else if(*s == '\b') {
 			if(!s[1]) break;
 			s+=2;
-			charIndex+=2;
 			continue;
 		} else if (*s == '\x0F') {
 			if(!s[1] || !s[2] || !s[3]) break;
 			s+=4;
-			charIndex+=4;
 			continue;
 		}
 		cw = font_data[font_ptrs[map_char(Utf8::ord(s))]];
@@ -742,9 +735,8 @@ int Graphics::CharIndexAtPosition(char *s, int positionX, int positionY)
 			break;
 		x += cw;
 		s+=Utf8::step(s);
-		charIndex++;
 	}
-	return charIndex;
+	return s-p;
 }
 
 
