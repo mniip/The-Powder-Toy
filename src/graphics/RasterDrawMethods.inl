@@ -118,7 +118,7 @@ TPT_INLINE int PIXELMETHODS_CLASS::drawchar(int x, int y, int c, int r, int g, i
 	int i, j, w, bn = 0, ba = 0;
 	char *rp = font_data + font_ptrs[map_char(c)];
 	w = *(rp++);
-	for (j=0; j<FONT_H; j++)
+	for (j=-2; j<FONT_H; j++)
 		for (i=0; i<w; i++)
 		{
 			if (!bn)
@@ -138,7 +138,7 @@ TPT_NO_INLINE int PIXELMETHODS_CLASS::addchar(int x, int y, int c, int r, int g,
 	int i, j, w, bn = 0, ba = 0;
 	char *rp = font_data + font_ptrs[map_char(c)];
 	w = *(rp++);
-	for (j=0; j<FONT_H; j++)
+	for (j=-2; j<FONT_H; j++)
 		for (i=0; i<w; i++)
 		{
 			if (!bn)
