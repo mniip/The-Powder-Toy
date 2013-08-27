@@ -19,8 +19,8 @@ SearchView::SearchView():
 
 	Client::Ref().AddListener(this);
 
-	nextButton = new ui::Button(ui::Point(XRES+BARSIZE-52, YRES+MENUSIZE-18), ui::Point(50, 16), "Next "+Utf8::chr(0x95));
-	previousButton = new ui::Button(ui::Point(1, YRES+MENUSIZE-18), ui::Point(50, 16), Utf8::chr(0x96)+" Prev");
+	nextButton = new ui::Button(ui::Point(XRES+BARSIZE-52, YRES+MENUSIZE-18), ui::Point(50, 16), "Next "+Utf8::chr(0xE015));
+	previousButton = new ui::Button(ui::Point(1, YRES+MENUSIZE-18), ui::Point(50, 16), Utf8::chr(0xE016)+" Prev");
 	infoLabel  = new ui::Label(ui::Point(260, YRES+MENUSIZE-18), ui::Point(XRES+BARSIZE-520, 16), "Page 1 of 1");
 	tagsLabel  = new ui::Label(ui::Point(270, YRES+MENUSIZE-18), ui::Point(XRES+BARSIZE-540, 16), "\boPopular Tags:");
 	motdLabel  = new ui::RichLabel(ui::Point(51, YRES+MENUSIZE-18), ui::Point(XRES+BARSIZE-102, 16), Client::Ref().GetMessageOfTheDay());

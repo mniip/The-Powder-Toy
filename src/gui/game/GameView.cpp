@@ -416,7 +416,7 @@ GameView::GameView():
 			v->c->OpenElementSearch();
 		}
 	};
-	ui::Button * tempButton = new ui::Button(ui::Point(XRES+BARSIZE-16, YRES+MENUSIZE-32), ui::Point(15, 15), Utf8::chr(0xE5), "Search for elements");
+	ui::Button * tempButton = new ui::Button(ui::Point(XRES+BARSIZE-16, YRES+MENUSIZE-32), ui::Point(15, 15), Utf8::chr(0xE065), "Search for elements");
 	tempButton->Appearance.Margin = ui::Border(0, 2, 3, 2);
 	tempButton->SetActionCallback(new ElementSearchAction(this));
 	AddComponent(tempButton);
@@ -2038,7 +2038,7 @@ void GameView::OnDraw()
 	{
 		std::stringstream sampleInfo;
 		sampleInfo << recordingIndex;
-		sampleInfo << ". " << Utf8::chr(0x8E) << " REC";
+		sampleInfo << ". " << Utf8::chr(0xE00E) << " REC";
 
 		int textWidth = Graphics::textwidth((char*)sampleInfo.str().c_str());
 		g->fillrect(XRES-20-textWidth, 12, textWidth+8, 15, 0, 0, 0, 255*0.5);

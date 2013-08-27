@@ -15,8 +15,8 @@ VideoBuffer * SampleTool::GetIcon(int toolID, int width, int height)
 			newTexture->SetPixel(x, y, PIXR(pc), PIXG(pc), PIXB(pc), 255);
 		}
 	}
-	newTexture->SetCharacter((width/2)-5, (height/2)-5, 0xE6, 255, 255, 255, 255);
-	newTexture->BlendCharacter((width/2)-5, (height/2)-5, 0xE7, 100, 180, 255, 255);
+	newTexture->SetCharacter((width/2)-5, (height/2)-5, 0xE066, 255, 255, 255, 255);
+	newTexture->BlendCharacter((width/2)-5, (height/2)-5, 0xE067, 100, 180, 255, 255);
 	return newTexture;
 }
 

@@ -42,17 +42,17 @@ SaveButton::SaveButton(Point position, Point size, SaveInfo * save):
 		std::string votes;
 
 		votes = format::NumberToString<int>(save->GetVotesUp()-save->GetVotesDown());
-		votesBackground = Utf8::chr(0xBB);
-		votesBackground2 = Utf8::chr(0xAD);
+		votesBackground = Utf8::chr(0xE03B);
+		votesBackground2 = Utf8::chr(0xE02D);
 		for (int j = 1; j < votes.length(); j++)
 		{
-			votesBackground += Utf8::chr(0xBC);
-			votesBackground2 += Utf8::chr(0xAE);
+			votesBackground += Utf8::chr(0xE03C);
+			votesBackground2 += Utf8::chr(0xE02E);
 		}
-		votesBackground += Utf8::chr(0xB9);
-		votesBackground2 += Utf8::chr(0xAB);
-		votesBackground += Utf8::chr(0xBA);
-		votesBackground2 += Utf8::chr(0xAC);
+		votesBackground += Utf8::chr(0xE039);
+		votesBackground2 += Utf8::chr(0xE02B);
+		votesBackground += Utf8::chr(0xE03A);
+		votesBackground2 += Utf8::chr(0xE02C);
 
 		votesString = "";
 
@@ -60,7 +60,7 @@ SaveButton::SaveButton(Point position, Point size, SaveInfo * save):
 			if(*iter == '-')
 				votesString += '-';
 			else
-				votesString += Utf8::chr(*iter+127);
+				votesString += Utf8::chr(*iter+0xE100);
 
 		int voteMax = std::max(save->GetVotesUp(),save->GetVotesDown());
 		if (voteMax)
@@ -247,15 +247,15 @@ void SaveButton::Draw(const Point& screenPos)
 			int y = screenPos.Y-15+(Size.Y-thumbBoxSize.Y)/2+thumbBoxSize.Y;
 			g->fillrect(x+1, y+1, 7, 8, 255, 255, 255, 255);
 			if (isMouseInsideHistory) {
-				g->drawchar(x, y, 0xA6, 200, 100, 80, 255);
+				g->drawchar(x, y, 0xE026, 200, 100, 80, 255);
 			} else {
-				g->drawchar(x, y, 0xA6, 160, 70, 50, 255);
+				g->drawchar(x, y, 0xE026, 160, 70, 50, 255);
 			}
 		}
 		if (!save->GetPublished())
 		{
-			g->drawchar(screenPos.X, screenPos.Y-2, 0xCD, 255, 255, 255, 255);
-			g->drawchar(screenPos.X, screenPos.Y-2, 0xCE, 212, 151, 81, 255);
+			g->drawchar(screenPos.X, screenPos.Y-2, 0xE04D, 255, 255, 255, 255);
+			g->drawchar(screenPos.X, screenPos.Y-2, 0xE04E, 212, 151, 81, 255);
 		}
 	}
 	if(file)

@@ -18,8 +18,8 @@
 LocalBrowserView::LocalBrowserView():
 	ui::Window(ui::Point(0, 0), ui::Point(XRES+BARSIZE, YRES+MENUSIZE))
 {
-	nextButton = new ui::Button(ui::Point(XRES+BARSIZE-52, YRES+MENUSIZE-18), ui::Point(50, 16), "Next "+Utf8::chr(0x95));
-	previousButton = new ui::Button(ui::Point(1, YRES+MENUSIZE-18), ui::Point(50, 16), Utf8::chr(0x96)+" Prev");
+	nextButton = new ui::Button(ui::Point(XRES+BARSIZE-52, YRES+MENUSIZE-18), ui::Point(50, 16), "Next "+Utf8::chr(0xE015));
+	previousButton = new ui::Button(ui::Point(1, YRES+MENUSIZE-18), ui::Point(50, 16), Utf8::chr(0xE016)+" Prev");
 	undeleteButton = new ui::Button(ui::Point(XRES+BARSIZE-122, YRES+MENUSIZE-18), ui::Point(60, 16), "Rescan");
 	infoLabel  = new ui::Label(ui::Point(51, YRES+MENUSIZE-18), ui::Point(XRES+BARSIZE-102, 16), "Loading...");
 	AddComponent(infoLabel);

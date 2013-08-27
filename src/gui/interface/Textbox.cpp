@@ -64,7 +64,7 @@ void Textbox::SetText(std::string newText)
 	if(masked)
 	{
 		int i;
-		std::string c = Utf8::chr(0x8D);
+		std::string c = Utf8::chr(0xE00D);
 		std::string maskedText = "";
 		for(i=0;i<backingText.length();i++)
 			maskedText += c;
@@ -150,7 +150,7 @@ void Textbox::cutSelection()
 	if(masked)
 	{
 		int i;
-		std::string c = Utf8::chr(0x8D);
+		std::string c = Utf8::chr(0xE00D);
 		std::string maskedText = "";
 		for(i=0;i<backingText.length();i++)
 			maskedText += c;
@@ -245,7 +245,7 @@ void Textbox::pasteIntoSelection()
 	if(masked)
 	{
 		int i;
-		std::string c = Utf8::chr(0x8D);
+		std::string c = Utf8::chr(0xE00D);
 		std::string maskedText = "";
 		for(i=0;i<backingText.length();i++)
 			maskedText += c;
@@ -463,7 +463,8 @@ void Textbox::OnVKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool
 		if(masked)
 		{
 			int i;
-			std::string c = Utf8::chr(0x8D);
+
+			std::string c = Utf8::chr(0xE00D);
 			std::string maskedText = "";
 			for(i=0;i<backingText.length();i++)
 				maskedText += c;

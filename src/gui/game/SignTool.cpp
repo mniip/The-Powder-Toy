@@ -128,9 +128,9 @@ SignWindow::SignWindow(SignTool * tool_, Simulation * sim_, int signID_, ui::Poi
 
 	justification = new ui::DropDown(ui::Point(52, 48), ui::Point(50, 16));
 	AddComponent(justification);
-	justification->AddOption(std::pair<std::string, int>(Utf8::chr(0x9D)+" Left", (int)sign::Left));
-	justification->AddOption(std::pair<std::string, int>(Utf8::chr(0x9E)+" Centre", (int)sign::Centre));
-	justification->AddOption(std::pair<std::string, int>(Utf8::chr(0x9F)+" Right", (int)sign::Right));
+	justification->AddOption(std::pair<std::string, int>(Utf8::chr(0xE01D)+" Left", (int)sign::Left));
+	justification->AddOption(std::pair<std::string, int>(Utf8::chr(0xE01E)+" Centre", (int)sign::Centre));
+	justification->AddOption(std::pair<std::string, int>(Utf8::chr(0xE01F)+" Right", (int)sign::Right));
 	justification->SetOption(1);
 	justification->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	
@@ -258,8 +258,8 @@ VideoBuffer * SignTool::GetIcon(int toolID, int width, int height)
 			newTexture->SetPixel(x, y, PIXR(pc), PIXG(pc), PIXB(pc), 255);
 		}
 	}
-	newTexture->SetCharacter((width/2)-5, (height/2)-5, 0xA1, 32, 64, 128, 255);
-	newTexture->BlendCharacter((width/2)-5, (height/2)-5, 0xA0, 255, 255, 255, 255);
+	newTexture->SetCharacter((width/2)-5, (height/2)-5, 0xE021, 32, 64, 128, 255);
+	newTexture->BlendCharacter((width/2)-5, (height/2)-5, 0xE020, 255, 255, 255, 255);
 	return newTexture;
 }
 
