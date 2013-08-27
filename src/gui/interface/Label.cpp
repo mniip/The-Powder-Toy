@@ -102,7 +102,7 @@ void Label::updateMultiline()
 			}
 			if(pc == ' ')
 			{
-				wordStart = &rawText[charIndex-2];
+				wordStart = &rawText[charIndex-1];
 			}
 			if ((c != ' ' || pc == ' ') && lineWidth + wordWidth >= Size.X-(Appearance.Margin.Left+Appearance.Margin.Right))
 			{
