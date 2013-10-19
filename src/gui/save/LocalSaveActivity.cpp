@@ -89,7 +89,7 @@ void LocalSaveActivity::Save()
 
 	if(filenameField->GetText().length())
 	{
-		std::string finalFilename = std::string(LOCAL_SAVE_DIR) + std::string(PATH_SEP) + filenameField->GetText() + ".cps";
+		std::string finalFilename = Client::Ref().GetPath() + PATH_SEP LOCAL_SAVE_DIR PATH_SEP + filenameField->GetText() + ".cps";
 		save.SetDisplayName(filenameField->GetText());
 		save.SetFileName(finalFilename);
 		if(Client::Ref().FileExists(finalFilename))
@@ -109,7 +109,7 @@ void LocalSaveActivity::Save()
 
 void LocalSaveActivity::saveWrite(std::string finalFilename)
 {
-	Client::Ref().MakeDirectory(LOCAL_SAVE_DIR);
+	Client::Ref().MakeDirectory((Client::Ref().GetPath() + PATH_SEP LOCAL_SAVE_DIR).c_str());
 	if (Client::Ref().WriteFile(save.GetGameSave()->Serialise(), finalFilename))
 		new ErrorMessage("Error", "Unable to write save file.");
 	else

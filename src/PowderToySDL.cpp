@@ -53,6 +53,17 @@ SDL_SysWMinfo sdl_wminfo;
 Atom XA_CLIPBOARD, XA_TARGETS, XA_UTF8_STRING;
 #endif
 
+struct arguments {
+	int scale;
+	bool setscale;
+	bool kiosk;
+	bool setkiosk;
+	std::string proxy;
+	std::string file;
+	std::string save;
+	std::string config;
+};
+
 char *clipboardText = NULL;
 
 int desktopWidth = 1280, desktopHeight = 1024;
@@ -356,68 +367,146 @@ SDL_Surface * SDLSetScreen(int newScale, bool newFullscreen)
 	return surface;
 }
 
-std::map<std::string, std::string> readArguments(int argc, char * argv[])
+void usage()
 {
-	std::map<std::string, std::string> arguments;
+	printf(
+	"Usage: powder [-S 1|2] [-k|-K] [-p proxy[:port]] [-s saveid[#title]] [-c config-dir] [FILE]\n"
+	"       powder -h\n"
+	"\n"
+	"Options:\n"
+	"    -S --scale    Force the scale of the window\n"
+	"                  Currently supported options are 1 and 2\n"
+	"    -k --kiosk    Force fullscreen mode\n"
+	"    -K --nokiosk  Force windowed mode\n"
+	"    -p --proxy    Connect through a proxy\n"
+	"                  If omitted, port is set to 80\n"
+	"    -s --save     Load a save from the server\n"
+	"                  If title is specified, a dialog box with it will be shown\n"
+	"    -c --config   Force the configuration and stamps directory\n"
+#ifdef WIN
+	"                  By default, loads from %%appdata%%\\powder\\\n"
+#else
+	"                  By default, loads from ~/.powder/\n"
+#endif
+	"    -h --help     Print this help\n"
+	"    FILE          A stamp (.stm) or save file (.cps) to be opened\n"
+	"                  If unspecified, opens a blank simulation\n"
+	"\n");
+}
 
-	//Defaults
-	arguments["scale"] = "";
-	arguments["proxy"] = "";
-	arguments["nohud"] = "false"; //the nohud, sound, and scripts commands currently do nothing.
-	arguments["sound"] = "false";
-	arguments["kiosk"] = "false";
-	arguments["scripts"] = "false";
-	arguments["open"] = "";
-	arguments["ddir"] = "";
-	arguments["ptsave"] = "";
-
+struct arguments readArguments(int argc, char* argv[])
+{
+	struct arguments args;
+	args.setscale = false;
+	args.setkiosk = false;
+	args.proxy = "";
+	args.file = "";
+	args.save = "";
+	args.config = "";
+	bool seenfile = false;
+	bool dashdash = false;
 	for (int i=1; i<argc; i++)
 	{
-		if (!strncmp(argv[i], "scale:", 6) && argv[i]+6)
+		if (dashdash)
 		{
-			arguments["scale"] = std::string(argv[i]+6);
+			if (seenfile)
+			{
+				printf("Only one file argument might be supplied\n");
+				usage();
+				exit(EXIT_FAILURE);
+			}
+			args.save = argv[i];
+			seenfile = true;
 		}
-		else if (!strncmp(argv[i], "proxy:", 6))
+		else if (!strcmp(argv[i], "--"))
+			dashdash = true;
+		else if (!strcmp(argv[i], "--scale") || !strcmp(argv[i], "-S"))
 		{
-			if(argv[i]+6)
-				arguments["proxy"] =  std::string(argv[i]+6);
-			else
-				arguments["proxy"] = "false";
-		}
-		else if (!strncmp(argv[i], "nohud", 5))
-		{
-			arguments["nohud"] = "true";
-		}
-		else if (!strncmp(argv[i], "kiosk", 5))
-		{
-			arguments["kiosk"] = "true";
-		}
-		else if (!strncmp(argv[i], "sound", 5))
-		{
-			arguments["sound"] = "true";
-		}
-		else if (!strncmp(argv[i], "scripts", 8))
-		{
-			arguments["scripts"] = "true";
-		}
-		else if (!strncmp(argv[i], "open", 5) && i+1<argc)
-		{
-			arguments["open"] = std::string(argv[i+1]);;
+			if (i+1 == argc)
+			{
+				printf("%s cannot be the last argument\n", argv[i]);
+				usage();
+				exit(EXIT_FAILURE);
+			}
+			std::istringstream iss(argv[i+1]);
+			iss >> args.scale;
+			if (iss.fail())
+			{
+				printf("'%s' is not a valid number\n", argv[i+1]);
+				usage();
+				exit(EXIT_FAILURE);
+			}
+			args.setscale = true;
 			i++;
 		}
-		else if (!strncmp(argv[i], "ddir", 5) && i+1<argc)
+		else if (!strcmp(argv[i], "--kiosk") || !strcmp(argv[i], "-k"))
 		{
-			arguments["ddir"] = std::string(argv[i+1]);
+			args.kiosk = true;
+			args.setkiosk = true;
+		}
+		else if (!strcmp(argv[i], "--nokiosk") || !strcmp(argv[i], "-K"))
+		{
+			args.kiosk = false;
+			args.setkiosk = true;
+		}
+		else if (!strcmp(argv[i], "--proxy") || !strcmp(argv[i], "-p"))
+		{
+			if (i+1 == argc)
+			{
+				printf("%s cannot be the last argument\n", argv[i]);
+				usage();
+				exit(EXIT_FAILURE);
+			}
+			args.proxy = std::string(argv[i+1]);
 			i++;
 		}
-		else if (!strncmp(argv[i], "ptsave", 7) && i+1<argc)
+		else if (!strcmp(argv[i], "--save") || !strcmp(argv[i], "-s"))
 		{
-			arguments["ptsave"] = std::string(argv[i+1]);
+			if (i+1 == argc)
+			{
+				printf("%s cannot be the last argument\n", argv[i]);
+				usage();
+				exit(EXIT_FAILURE);
+			}
+			args.save = std::string(argv[i+1]);
 			i++;
-			break;
+		}
+		else if (!strcmp(argv[i], "--config") || !strcmp(argv[i], "-c"))
+		{
+			if (i+1 == argc)
+			{
+				printf("%s cannot be the last argument\n", argv[i]);
+				usage();
+				exit(EXIT_FAILURE);
+			}
+			args.config = std::string(argv[i+1]);
+			i++;
+		}
+		else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
+		{
+			printf("The Powder Toy " MTOS(SAVE_VERSION) "." MTOS(MINOR_VERSION) "." MTOS(BUILD_NUM) "\n\n");
+			usage();
+			exit(0);
+		}
+		else if (argv[i][0]=='-')
+		{
+			printf("%s isn't a supported option\n", argv[i]);
+			usage();
+			exit(EXIT_FAILURE);
+		}
+		else
+		{
+			if (seenfile)
+			{
+				printf("Only one file argument might be supplied\n");
+				usage();
+				exit(EXIT_FAILURE);
+			}
+			args.save = argv[i];
+			seenfile = true;
 		}
 	}
-	return arguments;
+	return args;
 }
 
 int elapsedTime = 0, currentTime = 0, lastTime = 0, currentFrame = 0;
@@ -742,14 +831,21 @@ int main(int argc, char * argv[])
 	currentHeight = YRES+MENUSIZE;
 
 
-	std::map<std::string, std::string> arguments = readArguments(argc, argv);
+	struct arguments args = readArguments(argc, argv);
 
-	if(arguments["ddir"].length())
+	std::string confLoc;
+
+	if(args.config.length())
+		confLoc = args.config;
+	else
+	{
 #ifdef WIN
-		_chdir(arguments["ddir"].c_str());
+		confLoc = getenv("APPDATA")?std::string(getenv("APPDATA")) + PATH_SEP "powder":".";
 #else
-		chdir(arguments["ddir"].c_str());
+		confLoc = getenv("HOME")?std::string(getenv("HOME")) + PATH_SEP ".powder":".";
 #endif
+	}
+	Client::Ref().SetPath(confLoc);
 
 	int tempScale = 1;
 	bool tempFullscreen = false;
@@ -758,38 +854,21 @@ int main(int argc, char * argv[])
 	tempFullscreen = Client::Ref().GetPrefBool("Fullscreen", false);
 
 
-	if(arguments["kiosk"] == "true")
+	if(args.setkiosk)
 	{
-		tempFullscreen = true;
+		tempFullscreen = args.kiosk;
 		Client::Ref().SetPref("Fullscreen", tempFullscreen);
 	}
 
-	if(arguments["scale"].length())
+	if(args.setscale)
 	{
-		tempScale = format::StringToNumber<int>(arguments["scale"]);
+		tempScale = args.scale;
+		printf("%d\n",tempScale);
 		Client::Ref().SetPref("Scale", tempScale);
 	}
 
-	std::string proxyString = "";
-	if(arguments["proxy"].length())
-	{
-		if(arguments["proxy"] == "false")
-		{
-			proxyString = "";
-			Client::Ref().SetPref("Proxy", "");	
-		}
-		else
-		{
-			proxyString = (arguments["proxy"]);
-			Client::Ref().SetPref("Proxy", arguments["proxy"]);
-		}
-	}
-	else if(Client::Ref().GetPrefString("Proxy", "").length())
-	{
-		proxyString = (Client::Ref().GetPrefString("Proxy", ""));
-	}
-
-	Client::Ref().Initialise(proxyString);
+	Client::Ref().SetPref("Proxy", args.proxy);
+	Client::Ref().Initialise(args.proxy);
 
 	if(tempScale != 1 && tempScale != 2)
 		tempScale = 1;
@@ -848,23 +927,23 @@ int main(int argc, char * argv[])
 		gameController = new GameController();
 		engine->ShowWindow(gameController->GetView());
 
-		if(arguments["open"].length())
+		if(args.file.length())
 		{
 	#ifdef DEBUG
-			std::cout << "Loading " << arguments["open"] << std::endl;
+			std::cout << "Loading " << args.file << std::endl;
 	#endif
-			if(Client::Ref().FileExists(arguments["open"]))
+			if(Client::Ref().FileExists(args.file))
 			{
 				try
 				{
-					std::vector<unsigned char> gameSaveData = Client::Ref().ReadFile(arguments["open"]);
+					std::vector<unsigned char> gameSaveData = Client::Ref().ReadFile(args.file);
 					if(!gameSaveData.size())
 					{
 						new ErrorMessage("Error", "Could not read file");
 					}
 					else
 					{
-						SaveFile * newFile = new SaveFile(arguments["open"]);
+						SaveFile * newFile = new SaveFile(args.file);
 						GameSave * newSave = new GameSave(gameSaveData);
 						newFile->SetGameSave(newSave);
 						gameController->LoadSaveFile(newFile);
@@ -883,7 +962,7 @@ int main(int argc, char * argv[])
 			}
 		}
 
-		if(arguments["ptsave"].length())
+		if(args.save.length())
 		{
 			engine->g->fillrect((engine->GetWidth()/2)-101, (engine->GetHeight()/2)-26, 202, 52, 0, 0, 0, 210);
 			engine->g->drawrect((engine->GetWidth()/2)-100, (engine->GetHeight()/2)-25, 200, 50, 255, 255, 255, 180);
@@ -897,7 +976,7 @@ int main(int argc, char * argv[])
 			else
 				blit(engine->g->vid);
 	#endif
-			std::string ptsaveArg = arguments["ptsave"];
+			std::string ptsaveArg = args.save;
 			try
 			{
 			if(!ptsaveArg.find("ptsave:"))

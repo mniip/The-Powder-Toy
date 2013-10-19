@@ -61,6 +61,7 @@ extern "C"
 #endif
 }
 
+
 Client::Client():
 	authUser(0, ""),
 	updateAvailable(false),
@@ -79,9 +80,28 @@ Client::Client():
 		activeThumbRequestCompleteTimes[i] = 0;
 	}
 
+}
+
+std::string Client::GetPath()
+{
+	return path;
+}
+
+void Client::SetPath(std::string path)
+{
+	//Move the config to new location
+	if(FileExists("powder.pref"))
+	{
+		MakeDirectory(path.c_str());
+		printf("Found powder.pref in CWD, moving to %s\n", path.c_str());
+		rename("powder.pref", (path + PATH_SEP "powder.pref").c_str());
+		rename(STAMPS_DIR PATH_SEP, (path + PATH_SEP STAMPS_DIR).c_str());
+		rename(LOCAL_SAVE_DIR PATH_SEP, (path + PATH_SEP LOCAL_SAVE_DIR).c_str());
+	}
 	//Read config
+	this->path = path;
 	std::ifstream configFile;
-	configFile.open("powder.pref", std::ios::binary);
+	configFile.open((path + PATH_SEP "powder.pref").c_str(), std::ios::binary);
 	if(configFile)
 	{
 		int fsize = configFile.tellg();
@@ -132,7 +152,7 @@ void Client::Initialise(std::string proxyString)
 
 	//Read stamps library
 	std::ifstream stampsLib;
-	stampsLib.open(STAMPS_DIR PATH_SEP "stamps.def", std::ios::binary);
+	stampsLib.open((path + PATH_SEP STAMPS_DIR PATH_SEP "stamps.def").c_str(), std::ios::binary);
 	while(!stampsLib.eof())
 	{
 		char data[11];
@@ -806,7 +826,7 @@ void Client::RemoveListener(ClientListener * listener)
 void Client::WritePrefs()
 {
 	std::ofstream configFile;
-	configFile.open("powder.pref", std::ios::trunc);
+	configFile.open((path + PATH_SEP "powder.pref").c_str(), std::ios::trunc);
 	if(configFile)
 	{
 		if(authUser.ID)
@@ -961,7 +981,7 @@ void Client::MoveStampToFront(std::string stampID)
 
 SaveFile * Client::GetStamp(std::string stampID)
 {
-	std::string stampFile = std::string(STAMPS_DIR PATH_SEP + stampID + ".stm");
+	std::string stampFile = path + PATH_SEP STAMPS_DIR PATH_SEP + stampID + ".stm";
 	if (!FileExists(stampFile))
 		stampFile = stampID;
 	if(FileExists(stampFile))
@@ -990,12 +1010,7 @@ void Client::DeleteStamp(std::string stampID)
 	{
 		if((*iterator) == stampID)
 		{
-			std::stringstream stampFilename;
-			stampFilename << STAMPS_DIR;
-			stampFilename << PATH_SEP;
-			stampFilename << stampID;
-			stampFilename << ".stm";
-			remove(stampFilename.str().c_str());
+			remove((path + PATH_SEP STAMPS_DIR + stampID + ".stm").c_str());
 			stampIDs.erase(iterator);
 			return;
 		}
@@ -1020,13 +1035,13 @@ std::string Client::AddStamp(GameSave * saveData)
 	<< std::setw(8) << std::setfill('0') << std::hex << lastStampTime
 	<< std::setw(2) << std::setfill('0') << std::hex << lastStampName;
 
-	MakeDirectory(STAMPS_DIR);
+	MakeDirectory((path + PATH_SEP STAMPS_DIR).c_str());
 
 	int gameDataLength;
 	char * gameData = saveData->Serialise(gameDataLength);
 
 	std::ofstream stampStream;
-	stampStream.open(std::string(STAMPS_DIR PATH_SEP + saveID.str()+".stm").c_str(), std::ios::binary);
+	stampStream.open((path + PATH_SEP STAMPS_DIR PATH_SEP + saveID.str()+".stm").c_str(), std::ios::binary);
 	stampStream.write((const char *)gameData, gameDataLength);
 	stampStream.close();
 
@@ -1041,10 +1056,10 @@ std::string Client::AddStamp(GameSave * saveData)
 
 void Client::updateStamps()
 {
-	MakeDirectory(STAMPS_DIR);
+	MakeDirectory((path + PATH_SEP STAMPS_DIR).c_str());
 
 	std::ofstream stampsStream;
-	stampsStream.open(std::string(STAMPS_DIR PATH_SEP "stamps.def").c_str(), std::ios::binary);
+	stampsStream.open((path + PATH_SEP STAMPS_DIR PATH_SEP "stamps.def").c_str(), std::ios::binary);
 	for (std::list<std::string>::const_iterator iterator = stampIDs.begin(), end = stampIDs.end(); iterator != end; ++iterator)
 	{
 		stampsStream.write((*iterator).c_str(), 10);
