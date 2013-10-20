@@ -229,5 +229,5 @@ if(len(sys.argv) > 3):
     elif(sys.argv[1] == "tools"):
     	generateTools(sys.argv[4:], sys.argv[2], sys.argv[3])
 else:
-	generateElements(os.listdir("src/simulation/elements"), "generated/ElementClasses.cpp", "generated/ElementClasses.h")
-	generateTools(os.listdir("src/simulation/tools"), "generated/ToolClasses.cpp", "generated/ToolClasses.h")
+	generateElements(os.listdir("src/simulation/elements"), "src/ElementClasses.cpp", "src/ElementClasses.h")
+	generateTools(os.listdir("src/simulation/tools"), "src/ToolClasses.cpp", "src/ToolClasses.h")

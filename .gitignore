@@ -1,8 +1,7 @@
-*nohup.out
+nohup.out
 *.swp
 *.o
 *.exe
-*.user
 *.dll
 *.a
 *.la
@@ -11,12 +10,9 @@
 *.lua
 stdout.txt
 stderr.txt
-build*/*
+build/*
 stamps/*
 Saves/*
-generated/*
-includes/*
-generate
 Makefile.me
 *.xcodeproj
 .DS_Store
@@ -59,4 +55,6 @@ config.log
 *.pyc
 site_scons/site_tools/mfprogram/*.pyc
 site_scons/site_tools/gch/*.pyc
-others*
+configure
+Makefile
+autom4te.cache*
