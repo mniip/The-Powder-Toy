@@ -3,10 +3,10 @@
 #include <map>
 #include <string>
 #include <time.h>
-#include "SDL.h"
+#include "SDL/SDL.h"
 #ifdef WIN
 #define _WIN32_WINNT 0x0501	//Necessary for some macros and functions, tells windows.h to include functions only available in Windows XP or later
-#include "SDL_syswm.h"
+#include "SDL/SDL_syswm.h"
 #include <direct.h>
 #endif
 #include <iostream>
@@ -46,7 +46,7 @@
 using namespace std;
 
 #if defined(USE_SDL) && defined(LIN)
-#include <SDL_syswm.h>
+#include <SDL/SDL_syswm.h>
 #endif
 #if defined(USE_SDL) && defined(LIN) && defined(SDL_VIDEO_DRIVER_X11)
 SDL_SysWMinfo sdl_wminfo;

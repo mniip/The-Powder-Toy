@@ -1,16 +1,12 @@
 CC= @CC@
 CXX= @CXX@
-LD= @CC@
 
 OUT= build
 
-AFLAGS= @features@ @os@
-FFLAGS= @use_stdint@ @gravfft@ @luaconsole@ @use_sdl@ @reltype@ @debug@
-MFLAGS= -std=c++98 -D_GNU_SOURCE -D_REENTRANT -D_POSIX_C_SOURCE=200112L
-IFLAGS= @includes@ -Isrc -Idata
-CXXFLAGS+= -w -fkeep-inline-functions $(AFLAGS) $(FFLAGS) $(MFLAGS) $(IFLAGS)
-
-LDFLAGS+= @lsdl@ -lz -lbz2 -lpthread -lm @lfftw3f@ @llua@ $(LFLAGS)
+CPPFLAGS+= @CPPFLAGS@
+CFLAGS+= @CFLAGS@
+CXXFLAGS+= @CXXFLAGS@ 
+LDFLAGS+= @LDFLAGS@
 
 ifdef VERBOSE
 V=@echo >/dev/null 
@@ -21,29 +17,32 @@ Q=@
 endif
 
 SRCXX= $(patsubst src/%,%,$(wildcard src/*.cpp) $(wildcard src/*/*.cpp) $(wildcard src/gui/*/*.cpp) $(wildcard src/client/*/*.cpp) $(wildcard src/simulation/elements/*.cpp) $(wildcard src/simulation/tools/*.cpp))
+
+ifeq (@luasocket@,true)
 SRC= $(patsubst src/%,%,$(wildcard src/socket/*.c))
+endif
 
 $(OUT)/%.o: src/%.cpp
 	@mkdir -p "$(dir $@)"
 	$(V)"  [DEP] $<"
-	$(Q)$(CXX) -M $(CXXFLAGS) -o $(OUT)/$*.d $<
+	$(Q)$(CXX) -M $(CPPFLAGS) -o $(OUT)/$*.d $<
 	$(V)"  [CXX] $@"
-	$(Q)$(CXX) -c $< $(CXXFLAGS) -o $@
+	$(Q)$(CXX) -c $< $(CPPFLAGS) $(CXXFLAGS) -o $@
 
 -include $(SRCXX:.cpp=.d)
 
 $(OUT)/%.o: src/%.c
 	@mkdir -p "$(dir $@)"
 	$(V)"  [DEP] $<"
-	$(Q)$(CC) -M $(CCFLAGS) -o $(OUT)/$*.d $<
+	$(Q)$(CC) -M $(CPPFLAGS) -o $(OUT)/$*.d $<
 	$(V)"  [CC ] $@"
-	$(Q)$(CC) -c $< $(CCFLAGS) -o $@
+	$(Q)$(CC) -c $< $(CPPFLAGS) $(CFLAGS) -o $@
 
 -include $(SRC:.c=.d)
 
 powder: $(SRCXX:%.cpp=$(OUT)/%.o) $(SRC:%.c=$(OUT)/%.o)
-	$(V)"  [LD ] $@"
-	$(Q)$(LD) $^ $(LDFLAGS) -o $@
+	$(V)"  [CXX] $@"
+	$(Q)$(CC) $^ $(LDFLAGS) -o $@
 
 all: powder
 
