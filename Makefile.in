@@ -3,10 +3,10 @@ CXX= @CXX@
 
 OUT= build
 
-CPPFLAGS+= @CPPFLAGS@
-CFLAGS+= @CFLAGS@
-CXXFLAGS+= @CXXFLAGS@ 
-LDFLAGS+= @LDFLAGS@
+CPPFLAGS= $(MYCPPFLAGS) @CPPFLAGS@
+CFLAGS= $(MYCFLAGS) @CFLAGS@
+CXXFLAGS= $(MYCXXFLAGS) @CXXFLAGS@ 
+LDFLAGS= $(MYLDFLAGS) @LDFLAGS@
 
 ifdef VERBOSE
 V=@echo >/dev/null 
@@ -16,7 +16,7 @@ V=@echo
 Q=@
 endif
 
-SRCXX= $(patsubst src/%,%,$(wildcard src/*.cpp) $(wildcard src/*/*.cpp) $(wildcard src/gui/*/*.cpp) $(wildcard src/client/*/*.cpp) $(wildcard src/simulation/elements/*.cpp) $(wildcard src/simulation/tools/*.cpp))
+SRCXX:= $(patsubst src/%,%,$(wildcard src/*.cpp) $(wildcard src/*/*.cpp) $(wildcard src/gui/*/*.cpp) $(wildcard src/client/*/*.cpp) $(wildcard src/simulation/elements/*.cpp) $(wildcard src/simulation/tools/*.cpp))
 
 ifeq (@luasocket@,true)
 SRC= $(patsubst src/%,%,$(wildcard src/socket/*.c))
@@ -49,4 +49,5 @@ all: powder
 clean:
 	rm -rf powder $(OUT)/*
 
+.SUFFIXES:
 .PHONY: all clean

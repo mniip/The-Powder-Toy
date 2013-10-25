@@ -1,9 +1,9 @@
 AC_INIT([The Powder Toy], 89.0-273.0, [https://github.com/simtr/The-Powder-Toy/issues], powder, [http://powdertoy.co.uk/])
 
 AC_ARG_ENABLE(lua,   [  --disable-lua           turn off lua scripting support], withlua=$enableval)
-AC_ARG_ENABLE(lua,   [  --disable-sdl           do not use SDL for rendering], withlua=$enableval)
-AC_ARG_ENABLE(lua,   [  --enable-debug          turn on a few debug features], withdebug=$enableval)
-AC_ARG_ENABLE(64bit, [  --disable-64bit         force 32-bit executable], with64bit=$enableval)
+AC_ARG_ENABLE(sdl,   [  --disable-sdl           do not use SDL for rendering], withlua=$enableval)
+AC_ARG_ENABLE(debug, [  --enable-debug          turn on a few debug features], withdebug=$enableval)
+AC_ARG_ENABLE(64bit, [  --disable-64bit         force 32-bit executable (--enable-64bit to force 64-bit)], with64bit=$enableval)
 AC_ARG_ENABLE(sse,   [  --disable-sse           force non-SSE executable], withsse=$enableval)
 AC_ARG_ENABLE(sse2,  [  --disable-sse2          force non-SSE2 executable], withsse2=$enableval)
 AC_ARG_ENABLE(sse3,  [  --disable-sse3          force non-SSE3 executable], withsse3=$enableval)
@@ -11,12 +11,19 @@ AC_ARG_ENABLE(sse3,  [  --disable-sse3          force non-SSE3 executable], with
 AC_PROG_CC
 AC_PROG_CC_STDC
 AC_PROG_CXX
+if test "$GXX" != "yes"; then
+	AC_MSG_ERROR([No g++ found])
+fi
 AC_LANG(C++)
 
-CXXFLAGS="$CXXFLAGS -std=c++98"
+if test "$EXEEXT" == .exe; then
+	CXXFLAGS="$CXXFLAGS -std=gnu++98"
+else
+	CXXFLAGS="$CXXFLAGS -std=c++98"
+fi
 CPPFLAGS="$CPPFLAGS -DUSE_STDINT -D_GNU_SOURCE -D_REENTRANT -D_POSIX_C_SOURCE=2000112L -Isrc -Idata"
 
-AC_DEFUN(AC_TEST_ADD_CXXFLAG,[
+AC_DEFUN(AC_TEST_ADD_CXXFLAG, [
 	s_cppflags="$CXXFLAGS"
 	CXXFLAGS="$CXXFLAGS $1"
 	AC_MSG_CHECKING($2)
@@ -29,7 +36,7 @@ AC_DEFUN(AC_TEST_ADD_CXXFLAG,[
 	)
 ])
 
-AC_DEFUN(AC_TEST_ASSERT_CXXFLAG,[
+AC_DEFUN(AC_TEST_ASSERT_CXXFLAG, [
 	CXXFLAGS="$CXXFLAGS $1"
 	AC_MSG_CHECKING($2)
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
@@ -58,7 +65,7 @@ else
 			],
 			[
 				AC_MSG_RESULT([no])
-				CXXFLAGS="$CXXFLAGS -m32"
+				CXXFLAGS="$s_cppflags -m32"
 				AC_MSG_CHECKING([whether we are able to compile for a 32-bit target])
 			
 				AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
@@ -87,9 +94,13 @@ AC_TEST_ASSERT_CXXFLAG(-fkeep-inline-functions, [whether -fkeep-inline-functions
 
 AC_HAVE_LIBRARY(z, , [AC_MSG_ERROR([No libz found])])
 AC_HAVE_LIBRARY(bz2, , [AC_MSG_ERROR([No libbz2 found])])
-AC_HAVE_LIBRARY(pthread, , [AC_MSG_ERROR([No libpthread found])])
 AC_HAVE_LIBRARY(m, , [AC_MSG_ERROR([No libm found])])
-LDFLAGS="$LDFLAGS -lz -lbz2 -lpthread -lm"
+LDFLAGS="$LDFLAGS -lz -lbz2 -lm"
+AC_HAVE_LIBRARY(pthread, [LDFLAGS="$LDFLAGS -lpthread"],
+	[
+		AC_HAVE_LIBRARY(pthreadGC2, [LDFLAGS="$LDFLAGS -lpthreadGC2"], [AC_MSG_ERROR([No libpthread found])])
+	]
+)
 
 if test "$withlua" != no; then
 	AC_CHECK_LIB(lua5.1, main,
@@ -131,13 +142,17 @@ if test "$withsdl" != no; then
 fi
 
 if test "$withfft" != no; then
-	AC_HAVE_LIBRARY(fftw3f, , [AC_MSG_ERROR([No libfftw3f found])])
+	AC_HAVE_LIBRARY(fftw3f, [LDFLAGS="$LDFLAGS -lfftw3f"],
+		[
+			AC_CHECK_LIB(fftw3f-3, main, [LDFLAGS="$LDFLAGS -lfftw3f-3"], [AC_MSG_ERROR([No libfftw3f found])])
+		]
+	)
 	CPPFLAGS="$CPPFLAGS -DGRAVFFT"
-	LDFLAGS="$LDFLAGS -lfftw3f"
+		
 fi
 
 if test "$EXEEXT" == .exe; then
-	echo lel
+	CPPFLAGS="$CPPFLAGS -DWIN"
 else	
 	LDFLAGS="$LDFLAGS -lX11"
 	CPPFLAGS="$CPPFLAGS -DLIN"
