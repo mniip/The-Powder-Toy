@@ -89,6 +89,7 @@ AddOption('--stable',dest="stable",default=True,help="Non snapshot build")
 AddOption('--aao', dest="everythingAtOnce", action='store_true', default=False, help="Compile the whole game without generating intermediate objects (very slow), enable this when using compilers like clang or mscc that don't support -fkeep-inline-functions")
 
 AddOption('--fullclean',dest="justwork",action='store_true',default=False,help="for when nothing else works. Deletes all sconscript temporary files.") 
+AddOption('--copy-env',dest="copy_env",action='store_true',default=False,help="copy some common enviroment variables from the parent enviroment.") 
 
 # using one of these commandline options is compulsory
 
@@ -138,6 +139,14 @@ if(GetOption('win')):
 else:
 	env = Environment(tools = ['default'], ENV = os.environ)
 
+if(GetOption("copy_env")):
+    lstvar=["CC","CXX","LD","CFLAGS","LIBPATH"]
+    print "WARNING: enviroment copying enabled. changes in the enviroment can easily break the build process."
+    for var in lstvar:
+        if var in os.environ:
+            env[var]=os.environ[var]
+            print "WARNING: copying enviroment variable {}={!r}".format(var,os.environ[var])
+
 # macosx specific platform settings
 # +++++++++++++++++++++++++++++++++
 
@@ -167,19 +176,20 @@ if not GetOption("macosx"):
 				raise SystemExit(1)
 			
 
-# if lua is enabled try to parse the lua pgk-config, if that fails try the lua-dir option
-# .. : TODO: make this look the same as the SDL check, maybe make a function for it. keep it DRY.
+# if lua is enabled try to parse the lua pgk-config, or the lua-dir option if given
 
-	if not GetOption("nolua"):
+	if(GetOption("lua-dir")):
+		if not conf.CheckCHeader(GetOption("lua-dir") + '/lua.h'):
+			print "lua5.1 headers not found or not installed"
+			raise SystemExit(1)
+		else:
+			env.Append(CPPPATH=[GetOption("lua-dir")])
+	else:
 		try:
 			env.ParseConfig('pkg-config --cflags lua5.1')
 		except:
-			if(GetOption("lua-dir")):
-				if not conf.CheckCHeader(GetOption("lua-dir") + '/lua.h'):
-					print "lua5.1 headers not found or not installed"
-					raise SystemExit(1)
-				else:
-					env.Append(CPPPATH=[GetOption("lua-dir")])
+			print "lua5.1 headers not found or not installed"
+			raise SystemExit(1)
 
 # if fft is enabled try to parse its config, fail otherwise.
 

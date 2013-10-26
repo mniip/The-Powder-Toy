@@ -1347,7 +1347,14 @@ void GameView::OnKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool
 		c->ShowConsole();
 		break;
 	case 'p':
+	case KEY_F2:
 		screenshot();
+		break;
+	case KEY_F3:
+		SetDebugHUD(!GetDebugHUD());
+		break;
+	case KEY_F5:
+		c->ReloadSim();
 		break;
 	case 'r':
 		if (ctrl)
@@ -1633,12 +1640,12 @@ void GameView::DoMouseMove(int x, int y, int dx, int dy)
 			int mouseX = x;
 			if(mouseX > XRES)
 				mouseX = XRES;
-			if (mouseX < 15)
-				mouseX = 15;
+			//if (mouseX < 15) //makes scrolling a little nicer at edges but apparently if you put hundreds of elements in a menu it makes the end not show ...
+			//	mouseX = 15;
 
 			scrollBar->Position.X = (int)(((float)mouseX/((float)XRES))*(float)(XRES-scrollSize));
 
-			float overflow = totalWidth-(XRES-BARSIZE), mouseLocation = float(XRES)/float(mouseX-(XRES));
+			float overflow = totalWidth-(XRES-BARSIZE), mouseLocation = float(XRES-3)/float(mouseX-(XRES-2)); //mouseLocation adjusted slightly in case you have 200 elements in one menu
 			setToolButtonOffset(overflow/mouseLocation);
 
 			//Ensure that mouseLeave events are make their way to the buttons should they move from underneath the mouse pointer
