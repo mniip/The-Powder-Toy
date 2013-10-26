@@ -42,7 +42,7 @@ $(OUT)/%.o: src/%.c
 
 powder: $(SRCXX:%.cpp=$(OUT)/%.o) $(SRC:%.c=$(OUT)/%.o)
 	$(V)"  [CXX] $@"
-	$(Q)$(CC) $^ $(LDFLAGS) -o $@
+	$(Q)$(CXX) $^ $(LDFLAGS) -o $@
 
 all: powder
 

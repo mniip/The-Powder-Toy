@@ -17,7 +17,9 @@ fi
 AC_LANG(C++)
 
 if test "$EXEEXT" == .exe; then
-	CXXFLAGS="$CXXFLAGS -std=gnu++98"
+	CXXFLAGS="$CXXFLAGS -mwindows -std=gnu++98"
+	CFLAGS="$CFLAGS -mwindows"
+	LDFLAGS="$LDFLAGS -mwindows -std=gnu++98"
 else
 	CXXFLAGS="$CXXFLAGS -std=c++98"
 fi
@@ -90,7 +92,15 @@ if test "$withsse" != no; then
 	fi
 fi
 
-AC_TEST_ASSERT_CXXFLAG(-fkeep-inline-functions, [whether -fkeep-inline-functions is supported], [-fkeep-inline-functions is not supported])
+if test "$EXEEXT" == .exe; then
+	CPPFLAGS="$CPPFLAGS -DWIN"
+	LDFLAGS="$LDFLAGS -lws2_32"
+else	
+	LDFLAGS="$LDFLAGS -lX11"
+	CPPFLAGS="$CPPFLAGS -DLIN"
+fi
+
+#AC_TEST_ASSERT_CXXFLAG(-fkeep-inline-functions, [whether -fkeep-inline-functions is supported], [-fkeep-inline-functions is not supported])
 
 AC_HAVE_LIBRARY(z, , [AC_MSG_ERROR([No libz found])])
 AC_HAVE_LIBRARY(bz2, , [AC_MSG_ERROR([No libbz2 found])])
@@ -149,13 +159,6 @@ if test "$withfft" != no; then
 	)
 	CPPFLAGS="$CPPFLAGS -DGRAVFFT"
 		
-fi
-
-if test "$EXEEXT" == .exe; then
-	CPPFLAGS="$CPPFLAGS -DWIN"
-else	
-	LDFLAGS="$LDFLAGS -lX11"
-	CPPFLAGS="$CPPFLAGS -DLIN"
 fi
 
 CPPFLAGS="$CPPFLAGS -DSTABLE"
