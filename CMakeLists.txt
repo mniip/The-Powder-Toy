@@ -9,23 +9,44 @@ cmake_minimum_required(VERSION 2.8)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
-file(GLOB powder_SRC
+add_custom_command(OUTPUT
+	generator
+	COMMAND c++ -o generator ${CMAKE_SOURCE_DIR}/generator.cpp
+	DEPENDS ${CMAKE_SOURCE_DIR}/generator.cpp
+)
+file(GLOB powder_ELEMTOOLS
+	"src/simulation/elements/*.cpp"
+	"src/simulation/tools/*.cpp"
+)
+add_custom_command(OUTPUT
+	${CMAKE_SOURCE_DIR}/generated/ElementClasses.cpp ${CMAKE_SOURCE_DIR}/generated/ElementClasses.h ${CMAKE_SOURCE_DIR}/generated/ToolClasses.cpp ${CMAKE_SOURCE_DIR}/generated/ToolClasses.h
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/generated/
+	COMMAND ./generator ${CMAKE_SOURCE_DIR}/generated/ ${CMAKE_SOURCE_DIR}/src/simulation/elements/ ${CMAKE_SOURCE_DIR}/src/simulation/tools/
+	DEPENDS generator ${powder_ELEMTOOLS}
+)
+
+file(GLOB powder_SRCXX
     "src/elements/*.cpp"
     "src/*.cpp"
     "src/*/*.cpp"
     "src/*/*/*.cpp"
-    "generated/*.cpp"
+)
+list(APPEND powder_SRCXX generated/ElementClasses.cpp)
+list(APPEND powder_SRCXX generated/ToolClasses.cpp)
+
+file(GLOB powder_SRC
+	"src/socket/*.c"
 )
 
-# TODO: remove this once everything is C++, this is needed because the C++ stuff interacts with stuff in .c files and not all the headers for .c files have extern "C"
-set_source_files_properties(${powder_SRC} PROPERTIES LANGUAGE CXX )
+set_source_files_properties(${powder_SRCXX} PROPERTIES LANGUAGE CXX )
+set_source_files_properties(${powder_SRC} PROPERTIES LANGUAGE C )
 
 include_directories(includes)
 include_directories(data)
 include_directories(generated)
 include_directories(resources)
 include_directories(src)
-add_executable(powder ${powder_SRC})
+add_executable(powder ${powder_SRCXX} ${powder_SRC})
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 	add_definitions(-D_64BIT)
@@ -67,20 +88,6 @@ if(PreferStatic AND (${CMAKE_SYSTEM_NAME} MATCHES "Windows"))
 		set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -static-libstdc++ -static-libgcc")
 	endif(CMAKE_COMPILER_IS_GNUCXX)
 endif(PreferStatic AND (${CMAKE_SYSTEM_NAME} MATCHES "Windows"))
-
-
-if(PreferStatic)
-	set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES_ONLY_STATIC})
-	find_package(GnuRegex)
-	set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES_ORIG})
-endif(PreferStatic)
-if(NOT GNUREGEX_FOUND)
-	find_package(GnuRegex REQUIRED)
-endif(NOT GNUREGEX_FOUND)
-include_directories(${GNUREGEX_INCLUDE_DIR})
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	target_link_libraries(powder ${GNUREGEX_LIBRARIES})
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 
 find_package(Threads REQUIRED)

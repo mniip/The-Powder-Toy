@@ -31,7 +31,7 @@ bool sort_elements(std::vector<std::string> a, std::vector<std::string> b)
 	return an < bn;
 }
 
-void generate_elements(std::list<std::string> files)
+void generate_elements(std::list<std::string> files, std::string prefix)
 {
 	std::stringstream cpp, h;
 	h <<
@@ -120,18 +120,18 @@ void generate_elements(std::list<std::string> files)
 		"return elements;\n"
 		"}\n";
 	std::ofstream file_h;
-	file_h.open("src/ElementClasses.h");
+	file_h.open((prefix+"ElementClasses.h").c_str());
 	if(file_h.good())
 		file_h << h.rdbuf();
 	file_h.close();
 	std::ofstream file_cpp;
-	file_cpp.open("src/ElementClasses.cpp");
+	file_cpp.open((prefix+"ElementClasses.cpp").c_str());
 	if(file_cpp.good())
 		file_cpp << cpp.rdbuf();
 	file_cpp.close();
 }
 
-void generate_tools(std::list<std::string> files)
+void generate_tools(std::list<std::string> files, std::string prefix)
 {
 	std::stringstream cpp, h;
 	h <<
@@ -209,12 +209,12 @@ void generate_tools(std::list<std::string> files)
 		"return tools;\n"
 		"}\n";
 	std::ofstream file_h;
-	file_h.open("src/ToolClasses.h");
+	file_h.open((prefix+"ToolClasses.h").c_str());
 	if(file_h.good())
 		file_h << h.rdbuf();
 	file_h.close();
 	std::ofstream file_cpp;
-	file_cpp.open("src/ToolClasses.cpp");
+	file_cpp.open((prefix+"ToolClasses.cpp").c_str());
 	if(file_cpp.good())
 		file_cpp << cpp.rdbuf();
 	file_cpp.close();
@@ -226,19 +226,21 @@ int main(int argc,char *argv[])
 	struct dirent *ent;
 	
 	std::list<std::string> elements;
-	dir = opendir("src/simulation/elements");
+	std::string elements_dir = argc>1?argv[2]:"src/simulation/elements/";
+	dir = opendir(elements_dir.c_str());
 	while(ent = readdir(dir))
 		if(ent->d_name[0] != '.')
-			elements.push_back(ent->d_name);
+			elements.push_back(elements_dir + ent->d_name);
 	closedir(dir);
-	generate_elements(elements);
+	generate_elements(elements, argc>0?argv[1]:"build/");
 
 	std::list<std::string> tools;
-	dir = opendir("src/simulation/tools");
+	std::string tools_dir = argc>2?argv[3]:"src/simulation/tools/";
+	dir = opendir(tools_dir.c_str());
 	while(ent = readdir(dir))
 		if(ent->d_name[0] != '.')
-			tools.push_back(ent->d_name);
+			tools.push_back(tools_dir + ent->d_name);
 	closedir(dir);
-	generate_tools(tools);
+	generate_tools(tools, argc>0?argv[1]:"build/");
 	return 0;
 }
