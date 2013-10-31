@@ -349,7 +349,7 @@ int SDLOpen()
 	wanted.freq = SAMPLES;
 	wanted.format = AUDIO_S8;
 	wanted.channels = 1;
-	wanted.samples = 256;
+	wanted.samples = SAMPLES/61;
 	wanted.callback = Sound::Callback;
 	wanted.userdata = NULL;
 	if(SDL_OpenAudio(&wanted, NULL) < 0)

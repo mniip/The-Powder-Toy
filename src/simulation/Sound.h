@@ -1,4 +1,5 @@
 #include <SDL/SDL.h>
+#include <pthread.h>
 #define SAMPLES 44100
 namespace Sound
 {
