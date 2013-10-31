@@ -31,6 +31,7 @@
 #include "client/GameSave.h"
 #include "client/SaveFile.h"
 #include "simulation/SaveRenderer.h"
+#include "simulation/Sound.h"
 #include "client/Client.h"
 #include "Misc.h"
 
@@ -344,6 +345,18 @@ int SDLOpen()
 
 	SDL_WM_SetCaption("The Powder Toy", "Powder Toy");
 	//SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
+	SDL_AudioSpec wanted;
+	wanted.freq = SAMPLES;
+	wanted.format = AUDIO_S8;
+	wanted.channels = 1;
+	wanted.samples = 256;
+	wanted.callback = Sound::Callback;
+	wanted.userdata = NULL;
+	if(SDL_OpenAudio(&wanted, NULL) < 0)
+		printf("Could not initialize audio: %s\n", SDL_GetError());
+	pthread_mutex_init(&Sound::Mutex, NULL);
+	SDL_PauseAudio(0);
+
 	atexit(SDL_Quit);
 
 	return 0;

@@ -22,6 +22,7 @@
 #include "client/GameSave.h"
 #include "Sample.h"
 #include "Snapshot.h"
+#include "simulation/Sound.h"
 //#include "StorageClasses.h"
 
 #ifdef LUACONSOLE
@@ -4745,8 +4746,12 @@ void Simulation::update_particles()//doesn't update the particles themselves, bu
 		}
 	}
 
+
 	if(!sys_pause||framerender)
+	{
+		Sound::UpdateNotes();
 		update_particles_i(0, 1);
+	}
 
 	if(framerender)
 		framerender--;
