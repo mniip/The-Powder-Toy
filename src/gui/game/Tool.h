@@ -66,10 +66,9 @@ class SampleTool: public Tool
 	GameModel * gameModel;
 	PropertyTool *prop;
 public:
-	SampleTool(GameModel *model, PropertyTool *Prop):
+	SampleTool(GameModel *model):
 	Tool(0, "SMPL", "Sample an element on the screen.", 0, 0, 0, "DEFAULT_UI_SAMPLE", SampleTool::GetIcon),
-	gameModel(model),
-	prop(Prop)
+	gameModel(model)
 	{
 	}
 	static VideoBuffer * GetIcon(int toolID, int width, int height);

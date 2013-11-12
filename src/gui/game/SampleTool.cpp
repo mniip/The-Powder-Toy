@@ -23,7 +23,7 @@ VideoBuffer * SampleTool::GetIcon(int toolID, int width, int height)
 void SampleTool::Draw(Simulation * sim, Brush * brush, ui::Point position)
 {
 	if(!gameModel->GetActiveTool(ToolSelection::ToolPrimary)->GetIdentifier().compare("DEFAULT_UI_PROPERTY") || !gameModel->GetActiveTool(ToolSelection::ToolSecondary)->GetIdentifier().compare("DEFAULT_UI_PROPERTY") || !gameModel->GetActiveTool(ToolSelection::ToolTertiary)->GetIdentifier().compare("DEFAULT_UI_PROPERTY"))
-		prop->OpenWindow(sim);
+		((PropertyTool *)gameModel->GetToolFromIdentifier("DEFAULT_UI_PROPERTY"))->OpenWindow(sim);
 	if(gameModel->GetColourSelectorVisibility())
 	{
 		pixel colour = gameModel->GetRenderer()->sampleColor;

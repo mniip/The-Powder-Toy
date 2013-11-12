@@ -324,11 +324,10 @@ void GameModel::BuildMenus()
 		menuList[SC_TOOL]->AddTool(tempTool);
 	}
 	//Add special sign and prop tools
-menuList[SC_TOOL]->AddTool(new WindTool(0, "WIND", "Creates air movement.", 64, 64, 64, "DEFAULT_UI_WIND"));
-	PropertyTool *prop = new PropertyTool();
-	menuList[SC_TOOL]->AddTool((Tool *)prop);
+	menuList[SC_TOOL]->AddTool(new WindTool(0, "WIND", "Creates air movement.", 64, 64, 64, "DEFAULT_UI_WIND"));
+	menuList[SC_TOOL]->AddTool(new PropertyTool());
 	menuList[SC_TOOL]->AddTool(new SignTool());
-	menuList[SC_TOOL]->AddTool(new SampleTool(this, prop));
+	menuList[SC_TOOL]->AddTool(new SampleTool(this));
 
 	//Add decoration tools to menu
 	menuList[SC_DECO]->AddTool(new DecorationTool(DECO_ADD, "ADD", "Colour blending: Add.", 0, 0, 0, "DEFAULT_DECOR_ADD"));
