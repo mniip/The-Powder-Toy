@@ -1,6 +1,7 @@
 #include <iostream>
 #include <sstream>
 #include "gui/Style.h"
+#include "gui/game/Brush.h"
 #include "simulation/Simulation.h"
 #include "Tool.h"
 #include "gui/interface/Window.h"
@@ -16,12 +17,10 @@ class PropertyWindow: public ui::Window
 public:
 	ui::DropDown * property;
 	ui::Textbox * textField;
-	SignTool * tool;
-	Simulation * sim;
-	int signID;
-	ui::Point position;
+	PropertyTool * tool;
+	Simulation *sim;
 	std::vector<StructProperty> properties;
-	PropertyWindow(PropertyTool * tool_, Simulation * sim_, ui::Point position_);
+	PropertyWindow(PropertyTool *tool_, Simulation *sim);
 	void SetProperty();
 	virtual void OnDraw();
 	virtual void OnKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool alt);
@@ -43,10 +42,10 @@ public:
 	};
 };
 
-PropertyWindow::PropertyWindow(PropertyTool * tool_, Simulation * sim_, ui::Point position_):
+PropertyWindow::PropertyWindow(PropertyTool * tool_, Simulation *sim_):
 ui::Window(ui::Point(-1, -1), ui::Point(200, 87)),
-sim(sim_),
-position(position_)
+tool(tool_),
+sim(sim_)
 {
 	properties = Particle::GetProperties();
 	
@@ -95,7 +94,10 @@ void PropertyWindow::SetProperty()
 {
 	if(property->GetOption().second!=-1 && textField->GetText().length() > 0)
 	{
-		void * propValue;
+
+		if(tool->propValue)
+			free(tool->propValue);
+		tool->propValue=malloc(sizeof(int));
 		int tempInt;
 		unsigned int tempUInt;
 		float tempFloat;
@@ -155,7 +157,7 @@ void PropertyWindow::SetProperty()
 #ifdef DEBUG
 					std::cout << "Got int value " << tempInt << std::endl;
 #endif
-					propValue = &tempInt;
+					*(int *)tool->propValue = tempInt;
 					break;
 				case StructProperty::UInteger:
 					if(value.length() > 2 && value.substr(0, 2) == "0x")
@@ -183,7 +185,7 @@ void PropertyWindow::SetProperty()
 #ifdef DEBUG
 					std::cout << "Got uint value " << tempUInt << std::endl;
 #endif
-					propValue = &tempUInt;
+					*(unsigned int *)tool->propValue = tempUInt;
 					break;
 				case StructProperty::Float:
 				{
@@ -193,20 +195,15 @@ void PropertyWindow::SetProperty()
 #ifdef DEBUG
 					std::cout << "Got float value " << tempFloat << std::endl;
 #endif
-					propValue = &tempFloat;
+					*(float *)tool->propValue = tempFloat;
 				}
 					break;
 				default:
 					new ErrorMessage("Could not set property", "Invalid property");
 					return;
 			}
-			sim->flood_prop(
-							position.X,
-							position.Y,
-							properties[property->GetOption().second].Offset,
-							propValue,
-							properties[property->GetOption().second].Type
-							);
+			tool->propOffset = properties[property->GetOption().second].Offset;
+			tool->propType = properties[property->GetOption().second].Type;
 		} catch (const std::exception& ex) {
 			new ErrorMessage("Could not set property", "Invalid value provided");
 		}
@@ -235,7 +232,163 @@ void PropertyWindow::OnKeyPress(int key, Uint16 character, bool shift, bool ctrl
 		property->SetOption(property->GetOption().second+1);
 }
 
-void PropertyTool::Click(Simulation * sim, Brush * brush, ui::Point position)
+void PropertyTool::OpenWindow(Simulation *sim)
 {
-	new PropertyWindow(this, sim, position);
+	new PropertyWindow(this, sim);
+}
+
+void PropertyTool::SetProperty(Simulation *sim, ui::Point position)
+{
+	if(!propValue)
+		return;
+	if(position.X<0 || position.X>XRES || position.Y<0 || position.Y>YRES)
+		return;
+	int i = sim->pmap[position.Y][position.X];
+	if(!i)
+		i = sim->photons[position.Y][position.X];
+	if(!i)
+		return;
+	switch (propType)
+	{
+		case StructProperty::Float:
+			*((float*)(((char*)&sim->parts[i>>8])+propOffset)) = *((float*)propValue);
+			break;
+			
+		case StructProperty::ParticleType:
+		case StructProperty::Integer:
+			*((int*)(((char*)&sim->parts[i>>8])+propOffset)) = *((int*)propValue);
+			break;
+			
+		case StructProperty::UInteger:
+			*((unsigned int*)(((char*)&sim->parts[i>>8])+propOffset)) = *((unsigned int*)propValue);
+			break;
+			
+		default:
+			break;
+	}
+}
+
+void PropertyTool::Draw(Simulation *sim, Brush *cBrush, ui::Point position)
+{
+	if(cBrush)
+	{
+		int radiusX = cBrush->GetRadius().X, radiusY = cBrush->GetRadius().Y, sizeX = cBrush->GetSize().X, sizeY = cBrush->GetSize().Y;
+		unsigned char *bitmap = cBrush->GetBitmap();
+		for(int y = 0; y < sizeY; y++)
+			for(int x = 0; x < sizeX; x++)
+				if(bitmap[(y*sizeX)+x] && (position.X+(x-radiusX) >= 0 && position.Y+(y-radiusY) >= 0 && position.X+(x-radiusX) < XRES && position.Y+(y-radiusY) < YRES))
+					SetProperty(sim, ui::Point(position.X+(x-radiusX), position.Y+(y-radiusY)));
+	}	
+}
+
+void PropertyTool::DrawLine(Simulation *sim, Brush *cBrush, ui::Point position, ui::Point position2, bool dragging)
+{
+	int x1 = position.X, y1 = position.Y, x2 = position2.X, y2 = position2.Y;
+	bool reverseXY = abs(y2-y1) > abs(x2-x1);
+	int x, y, dx, dy, sy, rx = cBrush->GetRadius().X, ry = cBrush->GetRadius().Y;
+	float e = 0.0f, de;
+	if (reverseXY)
+	{
+		y = x1;
+		x1 = y1;
+		y1 = y;
+		y = x2;
+		x2 = y2;
+		y2 = y;
+	}
+	if (x1 > x2)
+	{
+		y = x1;
+		x1 = x2;
+		x2 = y;
+		y = y1;
+		y1 = y2;
+		y2 = y;
+	}
+	dx = x2 - x1;
+	dy = abs(y2 - y1);
+	if (dx)
+		de = dy/(float)dx;
+	else
+		de = 0.0f;
+	y = y1;
+	sy = (y1<y2) ? 1 : -1;
+	for (x=x1; x<=x2; x++)
+	{
+		if (reverseXY)
+ 			Draw(sim, cBrush, ui::Point(y, x));
+		else
+			Draw(sim, cBrush, ui::Point(x, y));
+		e += de;
+		if (e >= 0.5f)
+		{
+			y += sy;
+			if (!(rx+ry) && ((y1<y2) ? (y<=y2) : (y>=y2)))
+			{
+				if (reverseXY)
+					Draw(sim, cBrush, ui::Point(y, x));
+				else
+					Draw(sim, cBrush, ui::Point(x, y));
+			}
+			e -= 1.0f;
+		}
+	}
+}
+
+void PropertyTool::DrawRect(Simulation *sim, Brush *cBrush, ui::Point position, ui::Point position2)
+{
+	int x1 = position.X, y1 = position.Y, x2 = position2.X, y2 = position2.Y;
+	int i, j;
+	if (x1>x2)
+	{
+		i = x2;
+		x2 = x1;
+		x1 = i;
+	}
+	if (y1>y2)
+	{
+		j = y2;
+		y2 = y1;
+		y1 = j;
+	}
+	for (j=y1; j<=y2; j++)
+		for (i=x1; i<=x2; i++)
+			SetProperty(sim, ui::Point(i, j));
+}
+
+void PropertyTool::DrawFill(Simulation *sim, Brush *cBrush, ui::Point position)
+{
+	int i = sim->pmap[position.Y][position.X];
+	if(!i)
+		i = sim->photons[position.Y][position.X];
+	if(!i)
+		return;
+	ui::Point stack[XRES*YRES];
+	stack[0] = position;
+	int stackpos = 1;
+	char seen[YRES][XRES];
+	memset(seen, 0, XRES*YRES);
+
+	while(stackpos)
+	{
+		stackpos--;
+		int x = stack[stackpos].X, y = stack[stackpos].Y;
+		if(x<0 || x>XRES || y<0 || y>YRES)
+			continue;
+		int p = sim->pmap[y][x];
+		if(!p)
+			p = sim->photons[y][x];
+		if(!p)
+			continue;
+		if((p&0xFF) != (i&0xFF))
+			continue;
+		if(seen[y][x])
+			continue;
+		seen[y][x] = 1;
+		SetProperty(sim, ui::Point(x, y));
+		stack[stackpos++] = ui::Point(x-1, y);
+		stack[stackpos++] = ui::Point(x+1, y);
+		stack[stackpos++] = ui::Point(x, y-1);
+		stack[stackpos++] = ui::Point(x, y+1);
+	}
 }

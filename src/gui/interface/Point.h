@@ -22,6 +22,10 @@ struct Point
 	{
 	}
 
+	Point()
+	{
+	}
+
 	inline Point operator - () const
 	{
 		return Point(-X, -Y);
