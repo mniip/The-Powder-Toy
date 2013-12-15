@@ -458,7 +458,7 @@ void Gravity::mask_free(mask_el *c_mask_el){
 void Gravity::gravity_mask()
 {
 	char checkmap[YRES/CELL][XRES/CELL];
-	int x = 0, y = 0, i, j;
+	int x = 0, y = 0;
 	unsigned maskvalue;
 	mask_el *t_mask_el = NULL;
 	mask_el *c_mask_el = NULL;
@@ -514,13 +514,18 @@ void Gravity::gravity_mask()
 	}
 	mask_free(t_mask_el);
 }
-
+#ifdef GRAVFFT
 Gravity::Gravity():
-		grav_fft_status(false)
+	grav_fft_status(false)
 {
 	gravity_init();
 }
-
+#else
+Gravity::Gravity()
+{
+	gravity_init();
+}
+#endif
 Gravity::~Gravity()
 {
 	gravity_cleanup();

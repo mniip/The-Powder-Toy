@@ -26,6 +26,13 @@ static char hex[] = "0123456789ABCDEF";
 
 char *exe_name(void);
 
+//Linear interpolation
+template <typename T> inline T LinearInterpolate(T val1, T val2, T lowerCoord, T upperCoord, T coord)
+{
+	if(lowerCoord == upperCoord) return val1;
+	return (((val2 - val1) / (upperCoord - lowerCoord)) * (coord - lowerCoord)) + val1;
+}
+
 //Signum function
 int isign(float i);
 
@@ -33,7 +40,7 @@ unsigned clamp_flt(float f, float min, float max);
 
 float restrict_flt(float f, float min, float max);
 
-char *mystrdup(char *s);
+char *mystrdup(const char *s);
 
 struct strlist
 {
@@ -55,21 +62,15 @@ void load_presets(void);
 
 void save_string(FILE *f, char *str);
 
-int sregexp(const char *str, char *pattern);
-
 int load_string(FILE *f, char *str, int max);
 
-void strcaturl(char *dst, char *src);
+void strcaturl(char *dst, const char *src);
 
 std::string URLEscape(std::string source);
 
-void strappend(char *dst, char *src);
+void strappend(char *dst, const char *src);
 
 void *file_load(char *fn, int *size);
-
-void clipboard_push_text(char * text);
-
-char * clipboard_pull_text();
 
 extern char *clipboard_text;
 
@@ -84,6 +85,11 @@ void RGB_to_HSV(int r,int g,int b,int *h,int *s,int *v);
 void OpenURI(std::string uri);
 
 void membwand(void * dest, void * src, size_t destsize, size_t srcsize);
+
+int splitsign(const char* str, char * type = NULL);
+
+void millisleep(long int t);
+
 // a b
 // c d
 

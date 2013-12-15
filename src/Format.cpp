@@ -71,6 +71,58 @@ std::string format::UnixtimeToDateMini(time_t unixtime)
 	}
 }
 
+std::string format::CleanString(std::string dirtyString, size_t maxStringLength)
+{
+	return CleanString(dirtyString, std::string::npos, maxStringLength);
+}
+
+std::string format::CleanString(std::string dirtyString, size_t maxVisualSize, size_t maxStringLength)
+{
+	std::string newString = dirtyString;
+	if(maxStringLength != std::string::npos && newString.size() > maxStringLength)
+	{
+		newString = newString.substr(0, maxStringLength);
+	}
+	if(maxVisualSize != std::string::npos && newString.size()*10 > maxVisualSize)
+	{
+		newString = newString.substr(0, maxVisualSize/10);
+	}
+	for(int i = 0; i < newString.size(); i++){
+		if(!(newString[i]>=' ' && newString[i]<127)){	//Clamp to ASCII range
+			newString[i] = '?';							//Replace with "huh" char
+		}
+	}
+	return newString;
+}
+
+std::string format::CleanString(char * dirtyData, size_t maxStringLength)
+{
+	return CleanString(dirtyData, std::string::npos, maxStringLength);
+}
+
+std::string format::CleanString(char * dirtyData, size_t maxVisualSize, size_t maxStringLength)
+{
+	char * newData = new char[maxStringLength+1];
+	strncpy(newData, dirtyData, maxStringLength);
+	newData[maxStringLength] = 0;
+
+	std::string newString = std::string(newData);
+	delete[] newData;
+
+	if(maxVisualSize != std::string::npos && newString.size()*10 > maxVisualSize)
+	{
+		newString = newString.substr(0, maxVisualSize/10);
+	}
+	for(int i = 0; i < newString.size(); i++){
+		if(!(newString[i]>=' ' && newString[i]<127)){	//Clamp to ASCII range
+			newString[i] = '?';							//Replace with "huh" char
+		}
+	}
+	return newString;
+}
+
+
+
 std::vector<char> format::VideoBufferToPTI(const VideoBuffer & vidBuf)
 {
 	std::vector<char> data;
@@ -82,6 +134,62 @@ std::vector<char> format::VideoBufferToPTI(const VideoBuffer & vidBuf)
 		data.insert(data.end(), buffer, buffer+dataSize);
 		free(buffer);
 	}
+
+	return data;
+}
+
+VideoBuffer * format::PTIToVideoBuffer(std::vector<char> & data)
+{
+
+	int newWidth, newHeight;
+	pixel * buffer = Graphics::ptif_unpack(&data[0], data.size(), &newWidth, &newHeight);
+
+	if(buffer)
+	{
+		VideoBuffer * vb = new VideoBuffer(buffer, newWidth, newHeight);
+		free(buffer);
+		return vb;
+	}
+	return NULL;
+}
+
+std::vector<char> format::VideoBufferToBMP(const VideoBuffer & vidBuf)
+{
+	std::vector<char> data;
+	char buffer[54] = "BM";
+	int padding = 3 - (vidBuf.Width * 3 + 3) % 4;
+	unsigned int fileSize = (vidBuf.Width * 3 + padding) * vidBuf.Height + 54;
+	*(int *)(buffer + 2) = fileSize;
+	*(short int *)(buffer + 6) = 0; // reserved;
+	*(short int *)(buffer + 8) = 0; // reserved;
+	*(int *)(buffer + 10) = 0x36; // 54 bytes from start to data
+	*(int *)(buffer + 14) = 0x28; // 40 bytes in info header
+	*(int *)(buffer + 18) = vidBuf.Width;
+	*(int *)(buffer + 22) = vidBuf.Height;
+	*(short int *)(buffer + 26) = 1; // 1 plane
+	*(short int *)(buffer + 28) = 24; // 24 bits per pixel
+	*(int *)(buffer + 30) = 0; // no compression
+	*(int *)(buffer + 34) = fileSize - 54; // bitmap size
+	*(int *)(buffer + 38) = 0xB13; // 72dpi
+	*(int *)(buffer + 42) = 0xB13; // 72dpi
+	*(int *)(buffer + 46) = 0; // all colors used
+	*(int *)(buffer + 50) = 0; // all colors important
+
+	data.insert(data.end(), buffer, buffer+54);
+
+	char *currentRow = (char *)malloc((vidBuf.Width * 3) + padding);
+	for(int y = vidBuf.Height - 1; y >= 0; y--)
+	{
+		int rowPos = 0;
+		for(int x = 0; x < vidBuf.Width; x++)
+		{
+			currentRow[rowPos++] = PIXB(vidBuf.Buffer[(y*vidBuf.Width)+x]);
+			currentRow[rowPos++] = PIXG(vidBuf.Buffer[(y*vidBuf.Width)+x]);
+			currentRow[rowPos++] = PIXR(vidBuf.Buffer[(y*vidBuf.Width)+x]);
+		}
+		data.insert(data.end(), currentRow, currentRow+(vidBuf.Width*3)+padding);
+	}
+	free(currentRow);
 
 	return data;
 }

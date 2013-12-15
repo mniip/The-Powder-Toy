@@ -2,48 +2,48 @@
 //#TPT-Directive ElementClass Element_FWRK PT_FWRK 98
 Element_FWRK::Element_FWRK()
 {
-    Identifier = "DEFAULT_PT_FWRK";
-    Name = "FWRK";
-    Colour = PIXPACK(0x666666);
-    MenuVisible = 1;
-    MenuSection = SC_EXPLOSIVE;
-    Enabled = 1;
-    
-    Advection = 0.4f;
-    AirDrag = 0.01f * CFDS;
-    AirLoss = 0.99f;
-    Loss = 0.95f;
-    Collision = 0.0f;
-    Gravity = 0.4f;
-    Diffusion = 0.00f;
-    HotAir = 0.000f	* CFDS;
-    Falldown = 1;
-    
-    Flammable = 0;
-    Explosive = 0;
-    Meltable = 0;
-    Hardness = 1;
-    
-    Weight = 97;
-    
-    Temperature = R_TEMP+0.0f	+273.15f;
-    HeatConduct = 100;
-    Description = "First fireworks made, activated by heat/neutrons.";
-    
-    State = ST_SOLID;
-    Properties = TYPE_PART|PROP_LIFE_DEC;
-    
-    LowPressure = IPL;
-    LowPressureTransition = NT;
-    HighPressure = IPH;
-    HighPressureTransition = NT;
-    LowTemperature = ITL;
-    LowTemperatureTransition = NT;
-    HighTemperature = ITH;
-    HighTemperatureTransition = NT;
-    
-    Update = &Element_FWRK::update;
-    
+	Identifier = "DEFAULT_PT_FWRK";
+	Name = "FWRK";
+	Colour = PIXPACK(0x666666);
+	MenuVisible = 1;
+	MenuSection = SC_EXPLOSIVE;
+	Enabled = 1;
+	
+	Advection = 0.4f;
+	AirDrag = 0.01f * CFDS;
+	AirLoss = 0.99f;
+	Loss = 0.95f;
+	Collision = 0.0f;
+	Gravity = 0.4f;
+	Diffusion = 0.00f;
+	HotAir = 0.000f	* CFDS;
+	Falldown = 1;
+	
+	Flammable = 0;
+	Explosive = 0;
+	Meltable = 0;
+	Hardness = 1;
+	
+	Weight = 97;
+	
+	Temperature = R_TEMP+0.0f	+273.15f;
+	HeatConduct = 100;
+	Description = "Original version of fireworks, activated by heat/neutrons.";
+	
+	State = ST_SOLID;
+	Properties = TYPE_PART|PROP_LIFE_DEC;
+	
+	LowPressure = IPL;
+	LowPressureTransition = NT;
+	HighPressure = IPH;
+	HighPressureTransition = NT;
+	LowTemperature = ITL;
+	LowTemperatureTransition = NT;
+	HighTemperature = ITH;
+	HighTemperatureTransition = NT;
+	
+	Update = &Element_FWRK::update;
+	
 }
 
 //#TPT-Directive ElementHeader Element_FWRK static int update(UPDATE_FUNC_ARGS)
@@ -61,7 +61,7 @@ int Element_FWRK::update(UPDATE_FUNC_ARGS)
 			gx += sinf(angle)*sim->elements[PT_FWRK].Gravity*0.5f;
 			gy += cosf(angle)*sim->elements[PT_FWRK].Gravity*0.5f;
 		}
-		gmax = fmaxf(fabsf(gx), fabsf(gy));
+		gmax = std::max(fabsf(gx), fabsf(gy));
 		if (sim->eval_move(PT_FWRK, (int)(x-(gx/gmax)+0.5f), (int)(y-(gy/gmax)+0.5f), NULL))
 		{
 			multiplier = 15.0f/sqrtf(gx*gx+gy*gy);
@@ -83,8 +83,6 @@ int Element_FWRK::update(UPDATE_FUNC_ARGS)
 			return 0;
 		}
 	}
-	if (parts[i].life>=45)
-		parts[i].life=0;
 	if (parts[i].life<3&&parts[i].life>0)
 	{
 		int r = (rand()%245+11);
@@ -113,6 +111,8 @@ int Element_FWRK::update(UPDATE_FUNC_ARGS)
 		sim->kill_part(i);
 		return 1;
 	}
+	if (parts[i].life>=45)
+		parts[i].life=0;
 	return 0;
 }
 

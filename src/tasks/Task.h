@@ -1,10 +1,3 @@
-/*
- * Task.h
- *
- *  Created on: Apr 6, 2012
- *      Author: Simon
- */
-
 #ifndef TASK_H_
 #define TASK_H_
 
@@ -24,7 +17,7 @@ public:
 	std::string GetError();
 	std::string GetStatus();
 	void Poll();
-	Task() : listener(NULL) { progress = 0; }
+	Task() : listener(NULL) { progress = 0; thProgress = 0; }
 	virtual ~Task();
 protected:
 	int progress;

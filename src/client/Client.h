@@ -9,14 +9,18 @@
 #include "Singleton.h"
 
 #include "User.h"
+#include "UserInfo.h"
 
 #include "cajun/elements.h"
+
+#include "requestbroker/RequestBroker.h"
 
 class Thumbnail;
 class SaveInfo;
 class SaveFile;
 class SaveComment;
 class GameSave;
+class VideoBuffer;
 
 enum LoginStatus {
 	LoginOkay, LoginError
@@ -41,11 +45,12 @@ public:
 	UpdateInfo(int time, std::string file, BuildType type) : Major(0), Minor(0), Build(0), Time(time), File(file), Type(type) {}
 };
 
-class ThumbnailListener;
+class RequestListener;
 class ClientListener;
 class Client: public Singleton<Client> {
 private:
 	std::string messageOfTheDay;
+	std::vector<std::pair<std::string, std::string> > serverNotifications; 
 
 	void * versionCheckRequest;
 	bool updateAvailable;
@@ -73,6 +78,7 @@ private:
 	void notifyUpdateAvailable();
 	void notifyAuthUserChanged();
 	void notifyMessageOfTheDay();
+	void notifyNewNotification(std::pair<std::string, std::string> notification);
 
 	//Config file handle
 	json::Object configDocument;
@@ -88,9 +94,15 @@ public:
 	std::vector<std::string> DirectorySearch(std::string directory, std::string search, std::vector<std::string> extensions);
 	std::vector<std::string> DirectorySearch(std::string directory, std::string search, std::string extension);
 
+	std::string FileOpenDialogue();
+	//std::string FileSaveDialogue();
+
 	bool DoInstallation();
 
 	std::vector<unsigned char> ReadFile(std::string filename);
+
+	void AddServerNotification(std::pair<std::string, std::string> notification);
+	std::vector<std::pair<std::string, std::string> > GetServerNotifications();
 
 	void SetMessageOfTheDay(std::string message);
 	std::string GetMessageOfTheDay();
@@ -99,8 +111,8 @@ public:
 	void SetProxy(std::string proxy);
 
 	int MakeDirectory(const char * dirname);
-	void WriteFile(std::vector<unsigned char> fileData, std::string filename);
-	void WriteFile(std::vector<char> fileData, std::string filename);
+	bool WriteFile(std::vector<unsigned char> fileData, std::string filename);
+	bool WriteFile(std::vector<char> fileData, std::string filename);
 	bool FileExists(std::string filename);
 
 	void AddListener(ClientListener * listener);
@@ -116,27 +128,40 @@ public:
 	void RescanStamps();
 	int GetStampsCount();
 	SaveFile * GetFirstStamp();
+	void MoveStampToFront(std::string stampID);
 
 	RequestStatus AddComment(int saveID, std::string comment);
 
+	//Retrieves a "UserInfo" object
+	RequestBroker::Request * GetUserInfoAsync(std::string username);
+	RequestBroker::Request * SaveUserInfoAsync(UserInfo info);
+
+	RequestBroker::Request * GetSaveDataAsync(int saveID, int saveDate);
 	unsigned char * GetSaveData(int saveID, int saveDate, int & dataLength);
 	std::vector<unsigned char> GetSaveData(int saveID, int saveDate);
+
 	LoginStatus Login(std::string username, std::string password, User & user);
 	void ClearThumbnailRequests();
 	std::vector<SaveInfo*> * SearchSaves(int start, int count, std::string query, std::string sort, std::string category, int & resultCount);
 	std::vector<std::pair<std::string, int> > * GetTags(int start, int count, std::string query, int & resultCount);
+
 	std::vector<SaveComment*> * GetComments(int saveID, int start, int count);
+	RequestBroker::Request * GetCommentsAsync(int saveID, int start, int count);
+	
 	Thumbnail * GetPreview(int saveID, int saveDate);
 	Thumbnail * GetThumbnail(int saveID, int saveDate);
+
 	SaveInfo * GetSave(int saveID, int saveDate);
+	RequestBroker::Request * GetSaveAsync(int saveID, int saveDate);
+
 	RequestStatus DeleteSave(int saveID);
 	RequestStatus ReportSave(int saveID, std::string message);
 	RequestStatus UnpublishSave(int saveID);
 	RequestStatus FavouriteSave(int saveID, bool favourite);
 	void SetAuthUser(User user);
 	User GetAuthUser();
-	std::vector<std::string> * RemoveTag(int saveID, std::string tag); //TODO RequestStatus
-	std::vector<std::string> * AddTag(int saveID, std::string tag);
+	std::list<std::string> * RemoveTag(int saveID, std::string tag); //TODO RequestStatus
+	std::list<std::string> * AddTag(int saveID, std::string tag);
 	std::string GetLastError() {
 		return lastError;
 	}

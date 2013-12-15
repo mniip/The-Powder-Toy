@@ -8,9 +8,11 @@
 *.la
 *~
 *.pref
+*.lua
+*.sh
 stdout.txt
 stderr.txt
-build/*
+build*/*
 stamps/*
 Saves/*
 generated/*
@@ -32,10 +34,12 @@ Makefile.me
 *.manifest.res
 *manifest.rc
 *res.res
+*.idb
 *.obj
 *.tlog
 *.lib
 *.ipch
+*.ilk
 *.log
 *.lastbuildstate
 *.unsuccessfulbuild
@@ -44,6 +48,12 @@ Makefile.me
 *.project
 *.cproject
 *.settings
+*.cbp
+*.layout
+*.config
+*.creator
+*.files
+*.includes
 config.log
 *.sconsign.dblite
 *.sconf_temp
@@ -51,3 +61,4 @@ config.log
 *.pyc
 site_scons/site_tools/mfprogram/*.pyc
 site_scons/site_tools/gch/*.pyc
+others*

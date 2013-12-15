@@ -1,3 +1,4 @@
+#ifdef LUACONSOLE
 extern "C"
 {
 #include "lua.h"
@@ -8,7 +9,7 @@ extern "C"
 #include <iostream>
 #include "LuaButton.h"
 #include "LuaScriptInterface.h"
-#include "interface/Button.h"
+#include "gui/interface/Button.h"
 
 const char LuaButton::className[] = "Button";
 
@@ -112,3 +113,4 @@ void LuaButton::triggerAction()
 LuaButton::~LuaButton()
 {
 }
+#endif

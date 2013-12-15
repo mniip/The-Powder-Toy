@@ -9,6 +9,7 @@ class Air
 public:
 	Simulation & sim;
 	int airMode;
+	float ambientAirTemp;
 	//Arrays from the simulation
 	unsigned char (*bmap)[XRES/CELL];
 	unsigned char (*emap)[XRES/CELL];
@@ -30,6 +31,7 @@ public:
 	void update_airh(void);
 	void update_air(void);
 	void Clear();
+	void ClearAirH();
 	void Invert();
 	Air(Simulation & sim);
 };

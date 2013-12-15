@@ -1,9 +1,3 @@
-/*
- * Renderer.cpp
- *
- *  Created on: Jan 7, 2012
- *      Author: Simon
- */
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -15,6 +9,10 @@
 #include "simulation/Elements.h"
 #include "simulation/ElementGraphics.h"
 #include "simulation/Air.h"
+#ifdef LUACONSOLE
+#include "cat/LuaScriptInterface.h"
+#include "cat/LuaScriptHelper.h"
+#endif
 extern "C"
 {
 #include "hmap.h"
@@ -157,6 +155,11 @@ void Renderer::RenderEnd()
 #else
 	RenderZoom();
 #endif
+}
+
+void Renderer::SetSample(int x, int y)
+{
+	sampleColor = GetPixel(x, y);
 }
 
 void Renderer::clearScreen(float alpha)
@@ -485,9 +488,9 @@ void Renderer::RenderZoom()
 		int x, y, i, j;
 		pixel pix;
 		pixel * img = vid;
-		clearrect(zoomWindowPosition.X-1, zoomWindowPosition.Y-1, zoomScopeSize*ZFACTOR+2, zoomScopeSize*ZFACTOR+2);
-		drawrect(zoomWindowPosition.X-2, zoomWindowPosition.Y-2, zoomScopeSize*ZFACTOR+4, zoomScopeSize*ZFACTOR+4, 192, 192, 192, 255);
-		drawrect(zoomWindowPosition.X-1, zoomWindowPosition.Y-1, zoomScopeSize*ZFACTOR+2, zoomScopeSize*ZFACTOR+2, 0, 0, 0, 255);
+		clearrect(zoomWindowPosition.X-1, zoomWindowPosition.Y-1, zoomScopeSize*ZFACTOR+1, zoomScopeSize*ZFACTOR+1);
+		drawrect(zoomWindowPosition.X-2, zoomWindowPosition.Y-2, zoomScopeSize*ZFACTOR+3, zoomScopeSize*ZFACTOR+3, 192, 192, 192, 255);
+		drawrect(zoomWindowPosition.X-1, zoomWindowPosition.Y-1, zoomScopeSize*ZFACTOR+1, zoomScopeSize*ZFACTOR+1, 0, 0, 0, 255);
 		for (j=0; j<zoomScopeSize; j++)
 			for (i=0; i<zoomScopeSize; i++)
 			{
@@ -643,6 +646,19 @@ VideoBuffer * Renderer::WallIcon(int wallID, int width, int height)
 	return newTexture;
 }
 
+void Renderer::DrawBlob(int x, int y, unsigned char cr, unsigned char cg, unsigned char cb)
+{
+	blendpixel(x+1, y, cr, cg, cb, 112);
+	blendpixel(x-1, y, cr, cg, cb, 112);
+	blendpixel(x, y+1, cr, cg, cb, 112);
+	blendpixel(x, y-1, cr, cg, cb, 112);
+
+	blendpixel(x+1, y-1, cr, cg, cb, 64);
+	blendpixel(x-1, y-1, cr, cg, cb, 64);
+	blendpixel(x+1, y+1, cr, cg, cb, 64);
+	blendpixel(x-1, y+1, cr, cg, cb, 64);
+}
+
 void Renderer::DrawWalls()
 {
 #ifdef OGLR
@@ -794,6 +810,87 @@ void Renderer::DrawWalls()
 					}
 					drawtext(x*CELL, y*CELL-2, "\x8D", 255, 255, 255, 128);
 				}
+
+				// when in blob view, draw some blobs
+				if (render_mode & PMODE_BLOB)
+				{
+					if (wtypes[wt].drawstyle==1)
+					{
+						for (j=0; j<CELL; j+=2)
+							for (i=(j>>1)&1; i<CELL; i+=2)
+								drawblob((x*CELL+i), (y*CELL+j), PIXR(pc), PIXG(pc), PIXB(pc));
+					}
+					else if (wtypes[wt].drawstyle==2)
+					{
+						for (j=0; j<CELL; j+=2)
+							for (i=0; i<CELL; i+=2)
+								drawblob((x*CELL+i), (y*CELL+j), PIXR(pc), PIXG(pc), PIXB(pc));
+					}
+					else if (wtypes[wt].drawstyle==3)
+					{
+						for (j=0; j<CELL; j++)
+							for (i=0; i<CELL; i++)
+								drawblob((x*CELL+i), (y*CELL+j), PIXR(pc), PIXG(pc), PIXB(pc));
+					}
+					else if (wtypes[wt].drawstyle==4)
+					{
+						for (j=0; j<CELL; j++)
+							for (i=0; i<CELL; i++)
+								if(i == j)
+									drawblob((x*CELL+i), (y*CELL+j), PIXR(pc), PIXG(pc), PIXB(pc));
+								else if  (i == j+1 || (i == 0 && j == CELL-1))
+									drawblob((x*CELL+i), (y*CELL+j), PIXR(gc), PIXG(gc), PIXB(gc));
+								else 
+									drawblob((x*CELL+i), (y*CELL+j), 0x20, 0x20, 0x20);
+					}
+					if (bmap[y][x]==WL_EWALL)
+					{
+						if (emap[y][x])
+						{
+							for (j=0; j<CELL; j++)
+								for (i=0; i<CELL; i++)
+									if (i&j&1)
+										drawblob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+						}
+						else
+						{
+							for (j=0; j<CELL; j++)
+								for (i=0; i<CELL; i++)
+									if (!(i&j&1))
+										drawblob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+						}
+					}
+					else if (bmap[y][x]==WL_WALLELEC)
+					{
+						for (j=0; j<CELL; j++)
+							for (i=0; i<CELL; i++)
+							{
+								if (!((y*CELL+j)%2) && !((x*CELL+i)%2))
+									drawblob((x*CELL+i), (y*CELL+j), PIXR(pc), PIXG(pc), PIXB(pc));
+								else
+									drawblob((x*CELL+i), (y*CELL+j), 0x80, 0x80, 0x80);
+							}
+					}
+					else if (bmap[y][x]==WL_EHOLE)
+					{
+						if (emap[y][x])
+						{
+							for (j=0; j<CELL; j++)
+								for (i=0; i<CELL; i++)
+									drawblob((x*CELL+i), (y*CELL+j), 0x24, 0x24, 0x24);
+							for (j=0; j<CELL; j+=2)
+								for (i=0; i<CELL; i+=2)
+									vid[(y*CELL+j)*(XRES+BARSIZE)+(x*CELL+i)] = PIXPACK(0x000000);
+						}
+						else
+						{
+							for (j=0; j<CELL; j+=2)
+								for (i=0; i<CELL; i+=2)
+									drawblob((x*CELL+i), (y*CELL+j), 0x24, 0x24, 0x24);
+						}
+					}
+				}
+
 				if (wtypes[wt].eglow && emap[y][x])
 				{
 					// glow if electrified
@@ -815,7 +912,7 @@ void Renderer::DrawWalls()
 
 void Renderer::DrawSigns()
 {
-	int i, j, x, y, w, h, dx, dy,mx,my,b=1,bq;
+	int i, j, x, y, w, h, dx, dy,mx,my,b=1,bq,match;
 	std::vector<sign> signs = sim->signs;
 #ifdef OGLR
 	GLint prevFbo;
@@ -826,47 +923,18 @@ void Renderer::DrawSigns()
 	for (i=0; i < signs.size(); i++)
 		if (signs[i].text.length())
 		{
-			char buff[256];  //Buffer
-			sim->signs[i].pos(x, y, w, h);
-			clearrect(x, y, w, h);
-			drawrect(x, y, w, h, 192, 192, 192, 255);
-
-			//Displaying special information
-			if (signs[i].text == "{p}")
-			{
-				float pressure = 0.0f;
-				if (signs[i].x>=0 && signs[i].x<XRES && signs[i].y>=0 && signs[i].y<YRES)
-					pressure = sim->pv[signs[i].y/CELL][signs[i].x/CELL];
-				sprintf(buff, "Pressure: %3.2f", pressure);  //...pressure
-				drawtext(x+3, y+3, buff, 255, 255, 255, 255);
-			}
-			else if (signs[i].text == "{t}")
-			{
-				if (signs[i].x>=0 && signs[i].x<XRES && signs[i].y>=0 && signs[i].y<YRES && sim->pmap[signs[i].y][signs[i].x])
-					sprintf(buff, "Temp: %4.2f", sim->parts[sim->pmap[signs[i].y][signs[i].x]>>8].temp-273.15);  //...temperature
-				else
-					sprintf(buff, "Temp: 0.00");  //...temperature
-				drawtext(x+3, y+3, buff, 255, 255, 255, 255);
-			}
-			else if (sregexp(signs[i].text.c_str(), "^{[c|t]:[0-9]*|.*}$")==0)
-			{
-				int sldr, startm;
-				memset(buff, 0, sizeof(buff));
-				for (sldr=3; signs[i].text[sldr-1] != '|'; sldr++)
-					startm = sldr + 1;
-				sldr = startm;
-				while (signs[i].text[sldr] != '}')
-				{
-					buff[sldr - startm] = signs[i].text[sldr];
-					sldr++;
-				}
-				drawtext(x+3, y+3, buff, 0, 191, 255, 255);
-			}
+			char type = 0;
+			std::string text = signs[i].getText(sim);
+			splitsign(signs[i].text.c_str(), &type);
+			signs[i].pos(text, x, y, w, h);
+			clearrect(x, y, w+1, h);
+			drawrect(x, y, w+1, h, 192, 192, 192, 255);
+			if (!type)
+				drawtext(x+3, y+3, text, 255, 255, 255, 255);
+			else if(type == 'b')
+				drawtext(x+3, y+3, text, 211, 211, 40, 255);
 			else
-			{
-				drawtext(x+3, y+3, signs[i].text, 255, 255, 255, 255);
-			}
-
+				drawtext(x+3, y+3, text, 0, 191, 255, 255);
 			x = signs[i].x;
 			y = signs[i].y;
 			dx = 1 - signs[i].ju;
@@ -885,15 +953,6 @@ void Renderer::DrawSigns()
 				y+=dy;
 			}
 #endif
-			/*if (MSIGN==i)
-			{
-				bq = b;
-				b = SDL_GetMouseState(&mx, &my);
-				mx /= sdl_scale;
-				my /= sdl_scale;
-				signs[i].x = mx;
-				signs[i].y = my;
-			}*/
 		}
 #ifdef OGLR
 	glTranslated(0, -MENUSIZE, 0);
@@ -1067,7 +1126,6 @@ void Renderer::render_parts()
 	int orbd[4] = {0, 0, 0, 0}, orbl[4] = {0, 0, 0, 0};
 	float gradv, flicker, fnx, fny;
 	Particle * parts;
-	part_transition *ptransitions;
 	Element *elements;
 	if(!sim)
 		return;
@@ -1112,9 +1170,9 @@ void Renderer::render_parts()
 			fnx = sim->parts[i].x;
 			fny = sim->parts[i].y;
 
-			if((sim->photons[ny][nx]&0xFF) && !(sim->elements[t].Properties & TYPE_ENERGY) && t!=PT_STKM && t!=PT_STKM2 && t!=PT_FIGH)
-				continue;
 			if(nx >= XRES || nx < 0 || ny >= YRES || ny < 0)
+				continue;
+			if((sim->photons[ny][nx]&0xFF) && !(sim->elements[t].Properties & TYPE_ENERGY) && t!=PT_STKM && t!=PT_STKM2 && t!=PT_FIGH)
 				continue;
 
 			//Defaults
@@ -1158,7 +1216,15 @@ void Renderer::render_parts()
 				{
 					if (elements[t].Graphics)
 					{
+#if !defined(RENDERER) && defined(LUACONSOLE)
+						if (lua_gr_func[t])
+						{
+							luacon_graphicsReplacement(this, &(sim->parts[i]), nx, ny, &pixel_mode, &cola, &colr, &colg, &colb, &firea, &firer, &fireg, &fireb, i);
+						}
+						else if ((*(elements[t].Graphics))(this, &(sim->parts[i]), nx, ny, &pixel_mode, &cola, &colr, &colg, &colb, &firea, &firer, &fireg, &fireb)) //That's a lot of args, a struct might be better
+#else
 						if ((*(elements[t].Graphics))(this, &(sim->parts[i]), nx, ny, &pixel_mode, &cola, &colr, &colg, &colb, &firea, &firer, &fireg, &fireb)) //That's a lot of args, a struct might be better
+#endif
 						{
 							graphicscache[t].isready = 1;
 							graphicscache[t].pixel_mode = pixel_mode;
@@ -1217,7 +1283,10 @@ void Renderer::render_parts()
 					fireg = colg = (unsigned char)color_data[caddress+1];
 					fireb = colb = (unsigned char)color_data[caddress+2];
 					cola = 255;
-					if(pixel_mode & (FIREMODE | PMODE_GLOW)) pixel_mode = (pixel_mode & ~(FIREMODE|PMODE_GLOW)) | PMODE_BLUR;
+					if(pixel_mode & (FIREMODE | PMODE_GLOW))
+						pixel_mode = (pixel_mode & ~(FIREMODE|PMODE_GLOW)) | PMODE_BLUR;
+					else if (!pixel_mode)
+						pixel_mode |= PMODE_FLAT;
 				}
 				else if(colour_mode & COLOUR_LIFE)
 				{
@@ -1228,7 +1297,10 @@ void Renderer::render_parts()
 						q = sim->parts[i].life;
 					colr = colg = colb = sin(gradv*q) * 100 + 128;
 					cola = 255;
-					if(pixel_mode & (FIREMODE | PMODE_GLOW)) pixel_mode = (pixel_mode & ~(FIREMODE|PMODE_GLOW)) | PMODE_BLUR;
+					if(pixel_mode & (FIREMODE | PMODE_GLOW))
+						pixel_mode = (pixel_mode & ~(FIREMODE|PMODE_GLOW)) | PMODE_BLUR;
+					else if (!pixel_mode)
+						pixel_mode |= PMODE_FLAT;
 				}
 				else if(colour_mode & COLOUR_BASC)
 				{
@@ -1299,7 +1371,6 @@ void Renderer::render_parts()
 				if(pixel_mode & PSPEC_STICKMAN)
 				{
 					char buff[4];  //Buffer for HP
-					int s;
 					int legr, legg, legb;
 					playerst *cplayer;
 					if(t==PT_STKM)
@@ -1311,19 +1382,28 @@ void Renderer::render_parts()
 					else
 						continue;
 
-					if (mousePosX>(nx-3) && mousePosX<(nx+3) && mousePosY<(ny+3) && mousePosY>(ny-3)) //If mouse is in the head
+					if (mousePos.X>(nx-3) && mousePos.X<(nx+3) && mousePos.Y<(ny+3) && mousePos.Y>(ny-3)) //If mouse is in the head
 					{
 						sprintf(buff, "%3d", sim->parts[i].life);  //Show HP
-						drawtext(mousePosX-8-2*(sim->parts[i].life<100)-2*(sim->parts[i].life<10), mousePosY-12, buff, 255, 255, 255, 255);
+						drawtext(mousePos.X-8-2*(sim->parts[i].life<100)-2*(sim->parts[i].life<10), mousePos.Y-12, buff, 255, 255, 255, 255);
 					}
 
 					if (colour_mode!=COLOUR_HEAT)
 					{
 						if (cplayer->elem<PT_NUM && cplayer->elem > 0)
 						{
-							colr = PIXR(elements[cplayer->elem].Colour);
-							colg = PIXG(elements[cplayer->elem].Colour);
-							colb = PIXB(elements[cplayer->elem].Colour);
+							if (cplayer->elem == SPC_AIR)
+							{
+								colr = PIXR(0x8080FF);
+								colg = PIXG(0x8080FF);
+								colb = PIXB(0x8080FF);
+							}
+							else
+							{
+								colr = PIXR(elements[cplayer->elem].Colour);
+								colg = PIXG(elements[cplayer->elem].Colour);
+								colb = PIXB(elements[cplayer->elem].Colour);
+							}
 						}
 						else
 						{
@@ -1415,6 +1495,27 @@ void Renderer::render_parts()
 					draw_line(cplayer->legs[0], cplayer->legs[1], cplayer->legs[4], cplayer->legs[5], legr, legg, legb, 255);
 					draw_line(nx, ny+3, cplayer->legs[8], cplayer->legs[9], legr, legg, legb, 255);
 					draw_line(cplayer->legs[8], cplayer->legs[9], cplayer->legs[12], cplayer->legs[13], legr, legg, legb, 255);
+					if (cplayer->rocketBoots)
+					{
+						for (int leg=0; leg<2; leg++)
+						{
+							int nx = cplayer->legs[leg*8+4], ny = cplayer->legs[leg*8+5];
+							int colr = 255, colg = 0, colb = 255;
+							if (((int)(cplayer->comm)&0x04) == 0x04 || (((int)(cplayer->comm)&0x01) == 0x01 && leg==0) || (((int)(cplayer->comm)&0x02) == 0x02 && leg==1))
+								blendpixel(nx, ny, 0, 255, 0, 255);
+							else
+								blendpixel(nx, ny, 255, 0, 0, 255);
+							blendpixel(nx+1, ny, colr, colg, colb, 223);
+							blendpixel(nx-1, ny, colr, colg, colb, 223);
+							blendpixel(nx, ny+1, colr, colg, colb, 223);
+							blendpixel(nx, ny-1, colr, colg, colb, 223);
+
+							blendpixel(nx+1, ny-1, colr, colg, colb, 112);
+							blendpixel(nx-1, ny-1, colr, colg, colb, 112);
+							blendpixel(nx+1, ny+1, colr, colg, colb, 112);
+							blendpixel(nx-1, ny+1, colr, colg, colb, 112);
+						}
+					}
 #endif
 				}
 				if(pixel_mode & PMODE_FLAT)
@@ -1757,7 +1858,6 @@ void Renderer::render_parts()
 					int nxo = 0;
 					int nyo = 0;
 					int r;
-					int fire_rv = 0;
 					float drad = 0.0f;
 					float ddist = 0.0f;
 					sim->orbitalparts_get(parts[i].life, parts[i].ctype, orbd, orbl);
@@ -1775,7 +1875,6 @@ void Renderer::render_parts()
 					int nxo = 0;
 					int nyo = 0;
 					int r;
-					int fire_bv = 0;
 					float drad = 0.0f;
 					float ddist = 0.0f;
 					sim->orbitalparts_get(parts[i].life, parts[i].ctype, orbd, orbl);
@@ -1790,19 +1889,24 @@ void Renderer::render_parts()
 				}
 				if (pixel_mode & EFFECT_DBGLINES)
 				{
-					if (mousePosX == nx && mousePosY == ny && debugLines)//draw lines connecting wifi/portal channels
+					if (mousePos.X == nx && mousePos.Y == ny && debugLines && !(display_mode&DISPLAY_PERS))//draw lines connecting wifi/portal channels
 					{
 						int z;
-						int type = parts[i].type;
+						int type = parts[i].type, tmp = (int)((parts[i].temp-73.15f)/100+1), othertmp;
 						if (type == PT_PRTI)
 							type = PT_PRTO;
 						else if (type == PT_PRTO)
 							type = PT_PRTI;
-						for (z = 0; z<NPART; z++) {
+						for (z = 0; z<NPART; z++)
+						{
 							if (parts[z].type)
 							{
-								if (parts[z].type==type&&parts[z].tmp==parts[i].tmp)
-									xor_line(nx,ny,(int)(parts[z].x+0.5f),(int)(parts[z].y+0.5f));
+								if (parts[z].type==type)
+								{
+									othertmp = (int)((parts[z].temp-73.15f)/100+1);
+									if (tmp == othertmp)
+										xor_line(nx,ny,(int)(parts[z].x+0.5f),(int)(parts[z].y+0.5f));
+								}
 							}
 						}
 					}
@@ -2307,14 +2411,14 @@ Renderer::Renderer(Graphics * g, Simulation * sim):
 	decorations_enable(1),
 	gravityFieldEnabled(false),
 	gravityZonesEnabled(false),
-	mousePosX(-1),
-	mousePosY(-1),
+	mousePos(0, 0),
 	display_mode(0),
 	render_mode(0),
 	colour_mode(0),
 	gridSize(0),
 	blackDecorations(false),
-	debugLines(false)
+	debugLines(false),
+	sampleColor(0xFFFFFFFF)
 {
 	this->g = g;
 	this->sim = sim;
@@ -2618,9 +2722,14 @@ std::vector<unsigned int> Renderer::GetRenderMode()
 
 void Renderer::CompileDisplayMode()
 {
+	int old_display_mode = display_mode;
 	display_mode = 0;
 	for(int i = 0; i < display_modes.size(); i++)
 		display_mode |= display_modes[i];
+	if(!(display_mode & DISPLAY_PERS) && (old_display_mode & DISPLAY_PERS))
+	{
+		ClearAccumulation();
+	}
 }
 
 void Renderer::AddDisplayMode(unsigned int mode)

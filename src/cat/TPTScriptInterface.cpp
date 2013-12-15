@@ -1,18 +1,12 @@
-/*
- * TPTScriptInterface.cpp
- *
- *  Created on: Feb 5, 2012
- *      Author: Simon
- */
-
 #include <stack>
 #include <iostream>
 #include <string>
 #include <deque>
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 #include "TPTScriptInterface.h"
-#include "game/GameModel.h"
+#include "gui/game/GameModel.h"
 #include "simulation/Air.h"
 
 TPTScriptInterface::TPTScriptInterface(GameController * c, GameModel * m): CommandInterface(c, m)
@@ -92,10 +86,22 @@ ValueType TPTScriptInterface::testType(std::string word)
 				{
 					if(rawWord[i] == ',' && rawWord[i+1] >= '0' && rawWord[i+1] <= '9')
 						goto parsePoint;
+					else if((rawWord[i] == '#' || rawWord[i] == 'x') &&
+						((rawWord[i+1] >= '0' && rawWord[i+1] <= '9')
+						|| (rawWord[i+1] >= 'a' && rawWord[i+1] <= 'f')
+						|| (rawWord[i+1] >= 'A' && rawWord[i+1] <= 'F')))
+						goto parseNumberHex;
 					else
 						goto parseString;
 				}
 			}
+	parseNumberHex:
+			i++;
+			for(; i < word.length(); i++)
+				if(!((rawWord[i] >= '0' && rawWord[i] <= '9') || (rawWord[i] >= 'a' && rawWord[i] <= 'f') || (rawWord[i] >= 'A' && rawWord[i] <= 'F')))
+				{
+					goto parseString;
+				}
 			return TypeNumber;
 	parsePoint:
 			i++;
@@ -109,10 +115,47 @@ ValueType TPTScriptInterface::testType(std::string word)
 			return TypeString;
 }
 
+int TPTScriptInterface::parseNumber(char * stringData)
+{
+	char cc;
+	int base = 10;
+	int currentNumber = 0;
+	if(stringData[0] == '#')
+	{
+		stringData++;
+		base = 16;
+	}
+	else if(stringData[0] == '0' && stringData[1] == 'x')
+	{
+		stringData+=2;
+		base = 16;
+	}
+	if(base == 16)
+	{
+		while(cc = *(stringData++))
+		{
+			currentNumber *= base;
+			if(cc >= '0' && cc <= '9')
+				currentNumber += cc - '0';
+			else if(cc >= 'a' && cc <= 'f')
+				currentNumber += (cc - 'a') + 10;
+			else if(cc >= 'A' && cc <= 'F')
+				currentNumber += (cc - 'A') + 10;
+			else
+				break;
+		}
+	}
+	else
+	{
+		return atof(stringData);
+	}
+	return currentNumber;
+}
+
 AnyType TPTScriptInterface::eval(std::deque<std::string> * words)
 {
 	if(words->size() < 1)
-		return AnyType(TypeNull, NULL);
+		return AnyType(TypeNull, ValueValue());
 	std::string word = words->front(); words->pop_front();
 	char * rawWord = (char *)word.c_str();
 	ValueType wordType = testType(word);
@@ -135,7 +178,7 @@ AnyType TPTScriptInterface::eval(std::deque<std::string> * words)
 			return tptS_quit(words);
 		break;
 	case TypeNumber:
-		return NumberType(atoi(rawWord));
+		return NumberType(parseNumber(rawWord));
 	case TypePoint:
 	{
 		int pointX, pointY;
@@ -213,16 +256,29 @@ AnyType TPTScriptInterface::tptS_set(std::deque<std::string> * words)
 	//Selector
 	int newValue;
 	if(value.GetType() == TypeNumber)
+	{
 		newValue = ((NumberType)value).Value();
+	}
 	else if(value.GetType() == TypeString)
 	{
-		newValue = GetParticleType(((StringType)value).Value());
-		if (newValue < 0 || newValue >= PT_NUM)
+		if (property.Value() == "temp")
 		{
-			if (((StringType)value).Value() == "GOLD")
-				throw GeneralException("No, GOLD will not be an element");
-			else
+			std::string newString = ((StringType)value).Value();
+			if (newString.at(newString.length()-1) == 'C')
+				newValue = atoi(newString.substr(0, newString.length()-1).c_str())+273;
+			else if (newString.at(newString.length()-1) == 'F')
+				newValue = (int)((atoi(newString.substr(0, newString.length()-1).c_str())-32.0f)*5/9+273.15f);
+		}
+		else
+		{
+			newValue = GetParticleType(((StringType)value).Value());
+			if (newValue < 0 || newValue >= PT_NUM)
+			{
+				// TODO: add element CAKE to invalidate this
+				if (!strcasecmp(((StringType)value).Value().c_str(),"cake"))
+					throw GeneralException("Cake is a lie, not an element");
 				throw GeneralException("Invalid element");
+			}
 		}
 	}
 	else
@@ -292,6 +348,8 @@ AnyType TPTScriptInterface::tptS_set(std::deque<std::string> * words)
 
 		if(type<0 || type>=PT_NUM)
 			throw GeneralException("Invalid particle type");
+		if(type==0)
+			throw GeneralException("Cannot set properties of particles that do not exist");
 		std::cout << propertyOffset << std::endl;
 		switch(propertyFormat)
 		{
@@ -362,7 +420,7 @@ AnyType TPTScriptInterface::tptS_delete(std::deque<std::string> * words)
 		ui::Point deletePoint = ((PointType)partRef).Value();
 		if(deletePoint.X<0 || deletePoint.Y<0 || deletePoint.Y >= YRES || deletePoint.X >= XRES)
 			throw GeneralException("Invalid position");
-		sim->delete_part(deletePoint.X, deletePoint.Y, 0);
+		sim->delete_part(deletePoint.X, deletePoint.Y);
 	}
 	else if(partRef.GetType() == TypeNumber)
 	{
@@ -382,9 +440,13 @@ AnyType TPTScriptInterface::tptS_load(std::deque<std::string> * words)
 	//Arguments from stack
 	NumberType saveID = eval(words);
 
-	c->OpenSavePreview(saveID.Value(), 0);
-
-	return NumberType(0);
+	if (saveID.Value() > 0)
+	{
+		c->OpenSavePreview(saveID.Value(), 0, false);
+		return NumberType(0);
+	}
+	else
+		throw GeneralException("Invalid save ID");
 }
 
 AnyType TPTScriptInterface::tptS_bubble(std::deque<std::string> * words)

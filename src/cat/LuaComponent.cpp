@@ -1,3 +1,4 @@
+#ifdef LUACONSOLE
 extern "C"
 {
 #include "lua.h"
@@ -8,7 +9,7 @@ extern "C"
 #include <iostream>
 #include "LuaComponent.h"
 #include "LuaScriptInterface.h"
-#include "interface/Component.h"
+#include "gui/interface/Component.h"
 
 
 LuaComponent::LuaComponent(lua_State * l)
@@ -80,3 +81,4 @@ LuaComponent::~LuaComponent()
 		component->GetParentWindow()->RemoveComponent(component);
 	delete component;
 }
+#endif

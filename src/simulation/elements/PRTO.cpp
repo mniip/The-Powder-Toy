@@ -2,49 +2,57 @@
 //#TPT-Directive ElementClass Element_PRTO PT_PRTO 110
 Element_PRTO::Element_PRTO()
 {
-    Identifier = "DEFAULT_PT_PRTO";
-    Name = "PRTO";
-    Colour = PIXPACK(0x0020EB);
-    MenuVisible = 1;
-    MenuSection = SC_SPECIAL;
-    Enabled = 1;
-    
-    Advection = 0.0f;
-    AirDrag = 0.00f * CFDS;
-    AirLoss = 0.90f;
-    Loss = 0.00f;
-    Collision = 0.0f;
-    Gravity = 0.0f;
-    Diffusion = 0.00f;
-    HotAir = 0.005f	* CFDS;
-    Falldown = 0;
-    
-    Flammable = 0;
-    Explosive = 0;
-    Meltable = 0;
-    Hardness = 0;
-    
-    Weight = 100;
-    
-    Temperature = R_TEMP+0.0f	+273.15f;
-    HeatConduct = 0;
-    Description = "Portal OUT.  Things come out here, now with channels (same as WIFI)";
-    
-    State = ST_SOLID;
-    Properties = TYPE_SOLID;
-    
-    LowPressure = IPL;
-    LowPressureTransition = NT;
-    HighPressure = IPH;
-    HighPressureTransition = NT;
-    LowTemperature = ITL;
-    LowTemperatureTransition = NT;
-    HighTemperature = ITH;
-    HighTemperatureTransition = NT;
-    
-    Update = &Element_PRTO::update;
-    Graphics = &Element_PRTO::graphics;
+	Identifier = "DEFAULT_PT_PRTO";
+	Name = "PRTO";
+	Colour = PIXPACK(0x0020EB);
+	MenuVisible = 1;
+	MenuSection = SC_SPECIAL;
+	Enabled = 1;
+	
+	Advection = 0.0f;
+	AirDrag = 0.00f * CFDS;
+	AirLoss = 0.90f;
+	Loss = 0.00f;
+	Collision = 0.0f;
+	Gravity = 0.0f;
+	Diffusion = 0.00f;
+	HotAir = 0.005f	* CFDS;
+	Falldown = 0;
+	
+	Flammable = 0;
+	Explosive = 0;
+	Meltable = 0;
+	Hardness = 0;
+	
+	Weight = 100;
+	
+	Temperature = R_TEMP+0.0f	+273.15f;
+	HeatConduct = 0;
+	Description = "Portal OUT. Particles come out here. Also has temperature dependent channels. (same as WIFI)";
+	
+	State = ST_SOLID;
+	Properties = TYPE_SOLID;
+	
+	LowPressure = IPL;
+	LowPressureTransition = NT;
+	HighPressure = IPH;
+	HighPressureTransition = NT;
+	LowTemperature = ITL;
+	LowTemperatureTransition = NT;
+	HighTemperature = ITH;
+	HighTemperatureTransition = NT;
+	
+	Update = &Element_PRTO::update;
+	Graphics = &Element_PRTO::graphics;
 }
+
+/*these are the count values of where the particle gets stored, depending on where it came from
+   0 1 2
+   7 . 3
+   6 5 4
+   PRTO does (count+4)%8, so that it will come out at the opposite place to where it came in
+   PRTO does +/-1 to the count, so it doesn't jam as easily
+*/
 
 //#TPT-Directive ElementHeader Element_PRTO static int update(UPDATE_FUNC_ARGS)
 int Element_PRTO::update(UPDATE_FUNC_ARGS)
@@ -58,15 +66,12 @@ int Element_PRTO::update(UPDATE_FUNC_ARGS)
 	{
 		rx = sim->portal_rx[count];
 		ry = sim->portal_ry[count];
-			if (x+rx>=0 && y+ry>0 && x+rx<XRES && y+ry<YRES && (rx || ry))
+			if (BOUNDS_CHECK && (rx || ry))
 			{
 				r = pmap[y+ry][x+rx];
 				if (!r)
-					fe = 1;
-				if (r)
-					continue;
-				if (!r)
 				{
+					fe = 1;
 					for ( nnx =0 ; nnx<80; nnx++)
 					{
 						int randomness = (count + rand()%3-1 + 4)%8;//add -1,0,or 1 to count
@@ -80,7 +85,7 @@ int Element_PRTO::update(UPDATE_FUNC_ARGS)
 							sim->create_part(-1,x-1,y+1,PT_SPRK);
 							sim->create_part(-1,x-1,y,PT_SPRK);
 							sim->create_part(-1,x-1,y-1,PT_SPRK);
-							sim->portalp[parts[i].tmp][randomness][nnx] = sim->emptyparticle;
+							memset(&sim->portalp[parts[i].tmp][randomness][nnx], 0, sizeof(Particle));
 							break;
 						}
 						else if (sim->portalp[parts[i].tmp][randomness][nnx].type)
@@ -114,10 +119,20 @@ int Element_PRTO::update(UPDATE_FUNC_ARGS)
 								sim->fighters[(unsigned char)parts[np].tmp].spwn = 0;
 								sim->fighters[(unsigned char)sim->portalp[parts[i].tmp][randomness][nnx].tmp].spwn = 1;
 							}
-							parts[np] = sim->portalp[parts[i].tmp][randomness][nnx];
+							if (sim->portalp[parts[i].tmp][randomness][nnx].vx == 0.0f && sim->portalp[parts[i].tmp][randomness][nnx].vy == 0.0f)
+							{
+								// particles that have passed from PIPE into PRTI have lost their velocity, so use the velocity of the newly created particle if the particle in the portal has no velocity
+								float tmp_vx = parts[np].vx;
+								float tmp_vy = parts[np].vy;
+								parts[np] = sim->portalp[parts[i].tmp][randomness][nnx];
+								parts[np].vx = tmp_vx;
+								parts[np].vy = tmp_vy;
+							}
+							else
+								parts[np] = sim->portalp[parts[i].tmp][randomness][nnx];
 							parts[np].x = x+rx;
 							parts[np].y = y+ry;
-							sim->portalp[parts[i].tmp][randomness][nnx] = sim->emptyparticle;
+							memset(&sim->portalp[parts[i].tmp][randomness][nnx], 0, sizeof(Particle));
 							break;
 						}
 					}

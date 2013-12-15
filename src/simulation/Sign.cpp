@@ -1,12 +1,6 @@
-/*
- * Sign.cpp
- *
- *  Created on: Jun 25, 2012
- *      Author: Simon
- */
-
 #include "Sign.h"
 #include "graphics/Graphics.h"
+#include "simulation/Simulation.h"
 #include "Misc.h"
 
 sign::sign(std::string text_, int x_, int y_, Justification justification_):
@@ -17,38 +11,52 @@ sign::sign(std::string text_, int x_, int y_, Justification justification_):
 {
 }
 
-void sign::pos(int & x0, int & y0, int & w, int & h)
+std::string sign::getText(Simulation *sim)
 {
-	//Changing width if sign have special content
-	if (text == "{p}")
-	{
-		w = Graphics::textwidth("Pressure: -000.00");
-	}
-	else if (text == "{t}")
-	{
-		w = Graphics::textwidth("Temp: 0000.00");
-	}
-	else if (sregexp(text.c_str(), "^{[c|t]:[0-9]*|.*}$")==0)
-	{
-		int sldr, startm;
-		char buff[256];
-		memset(buff, 0, sizeof(buff));
-		for (sldr=3; text[sldr-1] != '|'; sldr++)
-			startm = sldr + 1;
+	char buff[256];
+	char signText[256];
+	sprintf(signText, "%s", text.substr(0, 255).c_str());
 
-		sldr = startm;
-		while (text[sldr] != '}')
+	if(signText[0] && signText[0] == '{')
+	{
+		if (!strcmp(signText,"{p}"))
 		{
-			buff[sldr - startm] = text[sldr];
-			sldr++;
+			float pressure = 0.0f;
+			if (x>=0 && x<XRES && y>=0 && y<YRES)
+				pressure = sim->pv[y/CELL][x/CELL];
+			sprintf(buff, "Pressure: %3.2f", pressure);  //...pressure
 		}
-		w = Graphics::textwidth(buff) + 5;
+		else if (!strcmp(signText,"{t}"))
+		{
+			if (x>=0 && x<XRES && y>=0 && y<YRES && sim->pmap[y][x])
+				sprintf(buff, "Temp: %4.2f", sim->parts[sim->pmap[y][x]>>8].temp-273.15);  //...temperature
+			else
+				sprintf(buff, "Temp: 0.00");  //...temperature
+		}
+		else
+		{
+			int pos=splitsign(signText);
+			if (pos)
+			{
+				strcpy(buff, signText+pos+1);
+				buff[strlen(signText)-pos-2]=0;
+			}
+			else
+				strcpy(buff, signText);
+		}
 	}
 	else
 	{
-		w = Graphics::textwidth(text.c_str()) + 5;
+		strcpy(buff, signText);
 	}
-	h = 14;
+
+	return std::string(buff);
+}
+
+void sign::pos(std::string signText, int & x0, int & y0, int & w, int & h)
+{
+	w = Graphics::textwidth(signText.c_str()) + 5;
+	h = 15;
 	x0 = (ju == 2) ? x - w :
 	      (ju == 1) ? x - w/2 : x;
 	y0 = (y > 18) ? y - 18 : y + 4;

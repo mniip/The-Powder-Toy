@@ -11,40 +11,42 @@
 #include "Config.h"
 //#include "powder.h"
 
+#define PIXELCHANNELS 3
 #ifdef PIX16
 #define PIXELSIZE 2
-#define PIXPACK(x) ((((x)>>8)&0xF800)|(((x)>>5)&0x07E0)|(((x)>>3)&0x001F))
+#define PIXPACK(x) ((((x)>>8)&0xF800)|(((x)>>5)&0x07E0)|(((x)>>3)&0x001F))					//16bit RGB in 16bit int: ????
 #define PIXRGB(r,g,b) ((((r)<<8)&0xF800)|(((g)<<3)&0x07E0)|(((b)>>3)&0x001F))
 #define PIXR(x) (((x)>>8)&0xF8)
 #define PIXG(x) (((x)>>3)&0xFC)
 #define PIXB(x) (((x)<<3)&0xF8)
 #else
 #define PIXELSIZE 4
-#ifdef PIX32BGR
-#define PIXPACK(x) ((((x)>>16)&0x0000FF)|((x)&0x00FF00)|(((x)<<16)&0xFF0000))
+#ifdef PIX32BGRA
+#define PIXPACK(x) ((((x)>>16)&0x0000FF)|((x)&0x00FF00)|(((x)<<16)&0xFF0000))				//24bit BGR in 32bit int: 00BBGGRR
 #define PIXRGB(r,g,b) (((b)<<16)|((g)<<8)|((r)))// (((b)<<16)|((g)<<8)|(r))
 #define PIXR(x) ((x)&0xFF)
 #define PIXG(x) (((x)>>8)&0xFF)
 #define PIXB(x) ((x)>>16)
 #else
 #ifdef PIX32BGRA
-#define PIXPACK(x) ((((x)>>8)&0x0000FF00)|(((x)<<8)&0x00FF0000)|(((x)<<24)&0xFF000000))
+#define PIXPACK(x) ((((x)>>8)&0x0000FF00)|(((x)<<8)&0x00FF0000)|(((x)<<24)&0xFF000000))		//32bit BGRA in 32bit int: BBGGRRAA
 #define PIXRGB(r,g,b) (((b)<<24)|((g)<<16)|((r)<<8))
 #define PIXR(x) (((x)>>8)&0xFF)
 #define PIXG(x) (((x)>>16)&0xFF)
-#define PIXB(x) (((x)>>24))
+#define PIXB(x) (((x)>>24)&0xFF)
 #elif defined(PIX32OGL)
-#define PIXPACK(x) (0xFF000000|((x)&0xFFFFFF))
-#define PIXRGB(r,g,b) (0xFF000000|((r)<<16)|((g)<<8)|((b)))// (((b)<<16)|((g)<<8)|(r))
-#define PIXRGBA(r,g,b,a) (((a)<<24)|((r)<<16)|((g)<<8)|((b)))// (((b)<<16)|((g)<<8)|(r))
+#define PIXELCHANNELS 4
+#define PIXPACK(x) (0xFF000000|((x)&0xFFFFFF))												//32bit ARGB in 32bit int: AARRGGBB
+#define PIXRGB(r,g,b) (0xFF000000|((r)<<16)|((g)<<8)|((b)))
+#define PIXRGBA(r,g,b,a) (((a)<<24)|((r)<<16)|((g)<<8)|((b)))
 #define PIXA(x) (((x)>>24)&0xFF)
 #define PIXR(x) (((x)>>16)&0xFF)
 #define PIXG(x) (((x)>>8)&0xFF)
 #define PIXB(x) ((x)&0xFF)
 #else
-#define PIXPACK(x) (x)
+#define PIXPACK(x) (x)																		//24bit RGB in 32bit int: 00RRGGBB.
 #define PIXRGB(r,g,b) (((r)<<16)|((g)<<8)|(b))
-#define PIXR(x) ((x)>>16)
+#define PIXR(x) (((x)>>16)&0xFF)
 #define PIXG(x) (((x)>>8)&0xFF)
 #define PIXB(x) ((x)&0xFF)
 #endif
@@ -108,8 +110,10 @@ public:
 
 	VideoBuffer(const VideoBuffer & old);
 	VideoBuffer(VideoBuffer * old);
+	VideoBuffer(pixel * buffer, int width, int height);
 	VideoBuffer(int width, int height);
 	void Resize(float factor, bool resample = false);
+	void Resize(int width, int height, bool resample = false, bool fixedRatio = true);
 	TPT_INLINE void BlendPixel(int x, int y, int r, int g, int b, int a)
 	{
 	#ifdef PIX32OGL
@@ -199,7 +203,7 @@ public:
 	//Font/text metrics
 	static int CharIndexAtPosition(char *s, int positionX, int positionY);
 	static int PositionAtCharIndex(char *s, int charIndex, int & positionX, int & positionY);
-	static int CharWidth(char c);
+	static int CharWidth(unsigned char c);
 	static int textnwidth(char *s, int n);
 	static void textnpos(char *s, int n, int w, int *cx, int *cy);
 	static int textwidthx(char *s, int w);
@@ -221,6 +225,7 @@ public:
 	void Clear();
 	void Finalise();
 	//
+	int drawtext_outline(int x, int y, const char *s, int r, int g, int b, int a);
 	int drawtext(int x, int y, const char *s, int r, int g, int b, int a);
 	int drawtext(int x, int y, std::string s, int r, int g, int b, int a);
 	int drawchar(int x, int y, int c, int r, int g, int b, int a);
@@ -234,12 +239,15 @@ public:
 	void draw_line(int x, int y, int x2, int y2, int r, int g, int b, int a);
 	void drawrect(int x, int y, int width, int height, int r, int g, int b, int a);
 	void fillrect(int x, int y, int width, int height, int r, int g, int b, int a);
+	void drawcircle(int x, int y, int rx, int ry, int r, int g, int b, int a);
+	void fillcircle(int x, int y, int rx, int ry, int r, int g, int b, int a);
 	void clearrect(int x, int y, int width, int height);
 	void gradientrect(int x, int y, int width, int height, int r, int g, int b, int a, int r2, int g2, int b2, int a2);
 
 	void draw_image(pixel *img, int x, int y, int w, int h, int a);
 	void draw_image(const VideoBuffer & vidBuf, int w, int h, int a);
 	void draw_image(VideoBuffer * vidBuf, int w, int h, int a);
+	void draw_rgba_image(unsigned char *data, int x, int y, float alpha);
 
 	Graphics();
 	~Graphics();

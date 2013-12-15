@@ -2,22 +2,22 @@
 #include <sstream>
 #include <stdlib.h>
 #include <string.h>
-#include <regex.h>
 #include <sys/types.h>
 #include <cmath>
 #include "Config.h"
 #include "Misc.h"
 #include "icondoc.h"
-#if defined(WIN)
+#ifdef WIN
 #include <shlobj.h>
 #include <shlwapi.h>
 #include <windows.h>
 #else
 #include <unistd.h>
+#include <time.h>
+#include <sys/time.h>
 #endif
 #ifdef MACOSX
 #include <mach-o/dyld.h>
-#include <ApplicationServices/ApplicationServices.h>
 #endif
 
 std::string URLEscape(std::string source)
@@ -48,14 +48,6 @@ std::string URLEscape(std::string source)
 	free(dst);
 	return finalString;
 }
-
-#if defined(USE_SDL) && defined(LIN) && defined(SDL_VIDEO_DRIVER_X11)
-#include <SDL/SDL_syswm.h>
-SDL_SysWMinfo sdl_wminfo;
-Atom XA_CLIPBOARD, XA_TARGETS;
-#endif
-
-char *clipboard_text = NULL;
 
 char *exe_name(void)
 {
@@ -111,7 +103,7 @@ int isign(float i) //TODO: INline or macro
 	return 0;
 }
 
-TPT_NO_INLINE unsigned clamp_flt(float f, float min, float max) //TODO: Also inline/macro
+unsigned clamp_flt(float f, float min, float max) //TODO: Also inline/macro
 {
 	if (f<min)
 		return 0;
@@ -120,7 +112,7 @@ TPT_NO_INLINE unsigned clamp_flt(float f, float min, float max) //TODO: Also inl
 	return (int)(255.0f*(f-min)/(max-min));
 }
 
-TPT_NO_INLINE float restrict_flt(float f, float min, float max) //TODO Inline or macro or something
+float restrict_flt(float f, float min, float max) //TODO Inline or macro or something
 {
 	if (f<min)
 		return min;
@@ -129,7 +121,7 @@ TPT_NO_INLINE float restrict_flt(float f, float min, float max) //TODO Inline or
 	return f;
 }
 
-char *mystrdup(char *s)
+char *mystrdup(const char *s)
 {
 	char *x;
 	if (s)
@@ -138,7 +130,7 @@ char *mystrdup(char *s)
 		strcpy(x, s);
 		return x;
 	}
-	return s;
+	return NULL;
 }
 
 void strlist_add(struct strlist **list, char *str)
@@ -180,17 +172,6 @@ void clean_text(char *text, int vwidth)
 			text[i] = ' ';
 		}
 	}
-}
-
-int sregexp(const char *str, char *pattern)
-{
-	int result;
-	regex_t patternc;
-	if (regcomp(&patternc, pattern,  0)!=0)
-		return 1;
-	result = regexec(&patternc, str, 0, NULL, 0);
-	regfree(&patternc);
-	return result;
 }
 
 void save_string(FILE *f, char *str)
@@ -242,7 +223,7 @@ void strcaturl(char *dst, char *src)
 	*d = 0;
 }
 
-void strappend(char *dst, char *src)
+void strappend(char *dst, const char *src)
 {
 	char *d;
 	unsigned char *s;
@@ -279,7 +260,7 @@ void *file_load(char *fn, int *size)
 
 int cpu_check(void)
 {
-#ifdef MACOSX
+/*#ifdef MACOSX
 	return 0;
 #else
 #ifdef X86
@@ -301,7 +282,7 @@ int cpu_check(void)
 		return 1;
 #endif
 #endif
-#endif
+#endif*/
 	return 0;
 }
 
@@ -365,77 +346,6 @@ vector2d v2d_new(float x, float y)
 {
 	vector2d result = {x, y};
 	return result;
-}
-
-void clipboard_push_text(char * text)
-{
-#ifdef MACOSX
-	PasteboardRef newclipboard;
-
-	if (PasteboardCreate(kPasteboardClipboard, &newclipboard)!=noErr) return;
-	if (PasteboardClear(newclipboard)!=noErr) return;
-	PasteboardSynchronize(newclipboard);
-
-	CFDataRef data = CFDataCreate(kCFAllocatorDefault, (const UInt8*)text, strlen(text));
-	PasteboardPutItemFlavor(newclipboard, (PasteboardItemID)1, CFSTR("com.apple.traditional-mac-plain-text"), data, 0);
-#elif defined(WIN)
-	if (OpenClipboard(NULL))
-	{
-		HGLOBAL cbuffer;
-		char * glbuffer;
-
-		EmptyClipboard();
-
-		cbuffer = GlobalAlloc(GMEM_DDESHARE, strlen(text)+1);
-		glbuffer = (char*)GlobalLock(cbuffer);
-
-		strcpy(glbuffer, text);
-
-		GlobalUnlock(cbuffer);
-		SetClipboardData(CF_TEXT, cbuffer);
-		CloseClipboard();
-	}
-#elif defined(LIN) && defined(SDL_VIDEO_DRIVER_X11)
-	if (clipboard_text!=NULL) {
-		free(clipboard_text);
-		clipboard_text = NULL;
-	}
-	clipboard_text = mystrdup(text);
-	sdl_wminfo.info.x11.lock_func();
-	XSetSelectionOwner(sdl_wminfo.info.x11.display, XA_CLIPBOARD, sdl_wminfo.info.x11.window, CurrentTime);
-	XFlush(sdl_wminfo.info.x11.display);
-	sdl_wminfo.info.x11.unlock_func();
-#else
-	printf("Not implemented: put text on clipboard \"%s\"\n", text);
-#endif
-}
-
-char * clipboard_pull_text()
-{
-#ifdef MACOSX
-	printf("Not implemented: get text from clipboard\n");
-#elif defined(WIN)
-	if (OpenClipboard(NULL))
-	{
-		HANDLE cbuffer;
-		char * glbuffer;
-
-		cbuffer = GetClipboardData(CF_TEXT);
-		glbuffer = (char*)GlobalLock(cbuffer);
-		GlobalUnlock(cbuffer);
-		CloseClipboard();
-		if(glbuffer!=NULL){
-			return mystrdup(glbuffer);
-		} else {
-			return mystrdup("");
-		}
-	}
-#elif defined(LIN) && defined(SDL_VIDEO_DRIVER_X11)
-	printf("Not implemented: get text from clipboard\n");
-#else
-	printf("Not implemented: get text from clipboard\n");
-#endif
-	return mystrdup("");
 }
 
 int register_extension()
@@ -557,7 +467,7 @@ int register_extension()
 #elif defined(LIN)
 	char *currentfilename = exe_name();
 	FILE *f;
-	char *mimedata =
+	const char *mimedata =
 "<?xml version=\"1.0\"?>\n"
 "	<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>\n"
 "	<mime-type type=\"application/vnd.powdertoy.save\">\n"
@@ -572,7 +482,7 @@ int register_extension()
 	fwrite(mimedata, 1, strlen(mimedata), f);
 	fclose(f);
 
-	char *desktopfiledata_tmp =
+	const char *desktopfiledata_tmp =
 "[Desktop Entry]\n"
 "Type=Application\n"
 "Name=Powder Toy\n"
@@ -713,5 +623,51 @@ void membwand(void * destv, void * srcv, size_t destsize, size_t srcsize)
 		dest[i] = dest[i] & src[i%srcsize];
 	}
 }
+
+int splitsign(const char* str, char * type)
+{
+	int match=0,r;
+	if (str[0]=='{' && (str[1]=='c' || str[1]=='t' || str[1]=='b'))
+	{
+		const char* p=str+2;
+		if(str[1] != 'b') {
+			if(str[2]==':' && str[3]>='0' && str[3]<='9')
+			{
+				p=str+4;
+				while (*p>='0' && *p<='9')
+					p++;
+			}
+			else
+				return 0;
+		}
+
+		if (*p=='|')
+		{
+			r=p-str;
+			while (*p)
+				p++;
+			if (p[-1]=='}')
+			{
+				if(type)
+					*type = str[1];
+				return r;
+			}
+		}
+	}
+	return 0;
+}
+
+void millisleep(long int t)
+{
+#ifdef WIN
+	Sleep(t);
+#else
+	struct timespec s;
+	s.tv_sec = t/1000;
+	s.tv_nsec = (t%1000)*10000000;
+	nanosleep(&s, NULL);
+#endif
+}
+
 vector2d v2d_zero = {0,0};
 matrix2d m2d_identity = {1,0,0,1};

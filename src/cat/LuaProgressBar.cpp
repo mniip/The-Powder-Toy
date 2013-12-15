@@ -1,3 +1,4 @@
+#ifdef LUACONSOLE
 extern "C"
 {
 #include "lua.h"
@@ -8,7 +9,7 @@ extern "C"
 #include <iostream>
 #include "LuaProgressBar.h"
 #include "LuaScriptInterface.h"
-#include "interface/ProgressBar.h"
+#include "gui/interface/ProgressBar.h"
 
 const char LuaProgressBar::className[] = "ProgressBar";
 
@@ -69,3 +70,4 @@ int LuaProgressBar::status(lua_State * l)
 LuaProgressBar::~LuaProgressBar()
 {
 }
+#endif

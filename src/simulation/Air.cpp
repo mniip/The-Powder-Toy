@@ -41,10 +41,14 @@ void Air::make_kernel(void) //used for velocity
 
 void Air::Clear()
 {
-	std::fill(&hv[0][0], &hv[0][0]+((XRES/CELL)*(YRES/CELL)), 273.15f + 22.0f);
 	std::fill(&pv[0][0], &pv[0][0]+((XRES/CELL)*(YRES/CELL)), 0.0f);
 	std::fill(&vy[0][0], &vy[0][0]+((XRES/CELL)*(YRES/CELL)), 0.0f);
 	std::fill(&vx[0][0], &vx[0][0]+((XRES/CELL)*(YRES/CELL)), 0.0f);
+}
+
+void Air::ClearAirH()
+{
+	std::fill(&hv[0][0], &hv[0][0]+((XRES/CELL)*(YRES/CELL)), ambientAirTemp);
 }
 
 void Air::update_airh(void)
@@ -53,19 +57,19 @@ void Air::update_airh(void)
 	float odh, dh, dx, dy, f, tx, ty;
 	for (i=0; i<YRES/CELL; i++) //reduces pressure/velocity on the edges every frame
 	{
-		hv[i][0] = 295.15f;
-		hv[i][1] = 295.15f;
-		hv[i][XRES/CELL-3] = 295.15f;
-		hv[i][XRES/CELL-2] = 295.15f;
-		hv[i][XRES/CELL-1] = 295.15f;
+		hv[i][0] = ambientAirTemp;
+		hv[i][1] = ambientAirTemp;
+		hv[i][XRES/CELL-3] = ambientAirTemp;
+		hv[i][XRES/CELL-2] = ambientAirTemp;
+		hv[i][XRES/CELL-1] = ambientAirTemp;
 	}
 	for (i=0; i<XRES/CELL; i++) //reduces pressure/velocity on the edges every frame
 	{
-		hv[0][i] = 295.15f;
-		hv[1][i] = 295.15f;
-		hv[YRES/CELL-3][i] = 295.15f;
-		hv[YRES/CELL-2][i] = 295.15f;
-		hv[YRES/CELL-1][i] = 295.15f;
+		hv[0][i] = ambientAirTemp;
+		hv[1][i] = ambientAirTemp;
+		hv[YRES/CELL-3][i] = ambientAirTemp;
+		hv[YRES/CELL-2][i] = ambientAirTemp;
+		hv[YRES/CELL-1][i] = ambientAirTemp;
 	}
 	for (y=0; y<YRES/CELL; y++) //update velocity and pressure
 	{
@@ -312,10 +316,19 @@ void Air::Invert()
 
 Air::Air(Simulation & simulation):
 	airMode(0),
+	ambientAirTemp(295.15f),
 	sim(simulation)
 {
 	//Simulation should do this.
 	make_kernel();
-
-
+	std::fill(&bmap_blockair[0][0], &bmap_blockairh[0][0]+((XRES/CELL)*(YRES/CELL)), 0);
+	std::fill(&bmap_blockairh[0][0], &bmap_blockair[0][0]+((XRES/CELL)*(YRES/CELL)), 0);
+	std::fill(&vx[0][0], &vx[0][0]+((XRES/CELL)*(YRES/CELL)), 0.0f);
+	std::fill(&ovx[0][0], &ovx[0][0]+((XRES/CELL)*(YRES/CELL)), 0.0f);
+	std::fill(&vy[0][0], &vy[0][0]+((XRES/CELL)*(YRES/CELL)), 0.0f);
+	std::fill(&ovy[0][0], &ovy[0][0]+((XRES/CELL)*(YRES/CELL)), 0.0f);
+	std::fill(&hv[0][0], &hv[0][0]+((XRES/CELL)*(YRES/CELL)), 0.0f);
+	std::fill(&ohv[0][0], &ohv[0][0]+((XRES/CELL)*(YRES/CELL)), 0.0f);
+	std::fill(&pv[0][0], &pv[0][0]+((XRES/CELL)*(YRES/CELL)), 0.0f);
+	std::fill(&opv[0][0], &opv[0][0]+((XRES/CELL)*(YRES/CELL)), 0.0f);
 }
