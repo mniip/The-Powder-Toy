@@ -1,0 +1,14 @@
+#ifdef LUACONSOLE
+extern "C" {
+	#include "lua.h"
+	#include "lauxlib.h"
+	#include "lualib.h"
+}
+
+void luaopen_socket(lua_State *l){
+	int socket_luac_sz = /*#SIZE*/;
+	const char* socket_luac = /*#DATA*/;
+	luaL_loadbuffer(l, socket_luac, socket_luac_sz, "@builtin socket.lua");
+	lua_call(l, 0, 0);
+}
+#endif

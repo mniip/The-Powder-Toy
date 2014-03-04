@@ -520,10 +520,12 @@ if(GetOption('win')):
 # ======================
 
 env.Command(['generated/ElementClasses.cpp', 'generated/ElementClasses.h'], Glob('src/simulation/elements/*.cpp'), pythonVer + " generator.py elements $TARGETS $SOURCES")
-sources+=Glob("generated/ElementClasses.cpp")
-
+sources+=['generated/ElementClasses.cpp']
 env.Command(['generated/ToolClasses.cpp', 'generated/ToolClasses.h'], Glob('src/simulation/simtools/*.cpp'), pythonVer + " generator.py tools $TARGETS $SOURCES")
-sources+=Glob("generated/ToolClasses.cpp")
+sources+=['generated/ToolClasses.cpp']
+
+env.Command(['generated/socket.lua.cpp'], ['src/socket/socket.lua', 'src/socket/socket.lua.orig'], pythonVer + " file2c.py $TARGETS $SOURCES")
+sources+=['generated/socket.lua.cpp']
 
 # final settings
 # ==============
