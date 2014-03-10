@@ -1,11 +1,10 @@
 #ifndef ENGINE_H
 #define ENGINE_H
-
 #include <stack>
 #include "Singleton.h"
 #include "Platform.h"
 #include "graphics/Graphics.h"
-#include "Window.h"
+#include "../interface/Window.h"
 
 namespace ui
 {
@@ -106,6 +105,5 @@ namespace ui
 		int maxWidth;
 		int maxHeight;
 	};
-
 }
 #endif

@@ -453,6 +453,8 @@ if(GetOption('win')):
     sources = filter(lambda source: not 'src\\simulation\\Gravity.cpp' in str(source), sources)
     sources = filter(lambda source: not 'src/simulation/Gravity.cpp' in str(source), sources)
 
+#sources = filter(lambda source: not 'newinterface' in str(source), sources)
+
 # macosx specific sources
 # -----------------------
 
