@@ -49,6 +49,7 @@ class RequestListener;
 class ClientListener;
 class Client: public Singleton<Client> {
 private:
+	std::string path;
 	std::string messageOfTheDay;
 	std::vector<std::pair<std::string, std::string> > serverNotifications; 
 
@@ -89,6 +90,9 @@ public:
 
 	Client();
 	~Client();
+
+	void SetPath(std::string path);
+	std::string GetPath();
 
 	std::vector<std::string> DirectorySearch(std::string directory, std::string search, std::vector<std::string> extensions);
 	std::vector<std::string> DirectorySearch(std::string directory, std::string search, std::string extension);

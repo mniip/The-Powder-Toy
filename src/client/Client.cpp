@@ -84,14 +84,33 @@ Client::Client():
 		activeThumbRequestCompleteTimes[i] = 0;
 	}
 
+}
+
+std::string Client::GetPath()
+{
+	return path;
+}
+
+void Client::SetPath(std::string path)
+{
+	//Move the config to new location
+	if(FileExists("powder.pref"))
+	{
+		MakeDirectory(path.c_str());
+		printf("Found powder.pref in CWD, moving to %s\n", path.c_str());
+		rename("powder.pref", (path + PATH_SEP "powder.pref").c_str());
+		rename(STAMPS_DIR PATH_SEP, (path + PATH_SEP STAMPS_DIR).c_str());
+		rename(LOCAL_SAVE_DIR PATH_SEP, (path + PATH_SEP LOCAL_SAVE_DIR).c_str());
+	}
 	//Read config
 #ifdef MACOSX
 	char * prefData = readUserPreferences();
 	std::stringstream configFile(prefData);
 	free(prefData);
 #else
+	this->path = path;
 	std::ifstream configFile;
-	configFile.open("powder.pref", std::ios::binary);
+	configFile.open((path + PATH_SEP "powder.pref").c_str(), std::ios::binary);
 #endif
 	if(configFile)
 	{
@@ -145,7 +164,7 @@ void Client::Initialise(std::string proxyString)
 
 	//Read stamps library
 	std::ifstream stampsLib;
-	stampsLib.open(STAMPS_DIR PATH_SEP "stamps.def", std::ios::binary);
+	stampsLib.open((path + PATH_SEP STAMPS_DIR PATH_SEP "stamps.def").c_str(), std::ios::binary);
 	while(!stampsLib.eof())
 	{
 		char data[11];
@@ -183,8 +202,6 @@ bool Client::DoInstallation()
 	char *iconname = NULL;
 	char *opencommand = NULL;
 	char *protocolcommand = NULL;
-	//char AppDataPath[MAX_PATH];
-	char *AppDataPath = NULL;
 	iconname = (char*)malloc(strlen(currentfilename)+6);
 	sprintf(iconname, "%s,-102", currentfilename);
 	
@@ -200,8 +217,8 @@ bool Client::DoInstallation()
 	//Move Game executable into application data folder
 	//TODO: Implement
 	
-	opencommand = (char*)malloc(strlen(currentfilename)+53+strlen(AppDataPath));
-	protocolcommand = (char*)malloc(strlen(currentfilename)+53+strlen(AppDataPath));
+	opencommand = (char*)malloc(strlen(currentfilename)+53+path.size());
+	protocolcommand = (char*)malloc(strlen(currentfilename)+53+path.size());
 	/*if((strlen(AppDataPath)+strlen(APPDATA_SUBDIR "\\Powder Toy"))<MAX_PATH)
 	{
 		strappend(AppDataPath, APPDATA_SUBDIR);
@@ -212,8 +229,8 @@ bool Client::DoInstallation()
 		returnval = 0;
 		goto finalise;
 	}*/
-	sprintf(opencommand, "\"%s\" open \"%%1\" ddir \"%s\"", currentfilename, AppDataPath);
-	sprintf(protocolcommand, "\"%s\" ddir \"%s\" ptsave \"%%1\"", currentfilename, AppDataPath);
+	sprintf(opencommand, "\"%s\" --config \"%s\" \"%%1\"", currentfilename, path.c_str());
+	sprintf(protocolcommand, "\"%s\" --config \"%s\" --save \"%%1\"", currentfilename, path.c_str());
 
 	//Create protocol entry
 	rresult = RegCreateKeyEx(HKEY_CURRENT_USER, "Software\\Classes\\ptsave", 0, 0, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &newkey, NULL);
@@ -375,13 +392,13 @@ bool Client::DoInstallation()
 	const char *protocolfiledata_tmp =
 "[Desktop Entry]\n"
 "Type=Application\n"
-"Name=Powder Toy\n"
+"Name=The Powder Toy\n"
 "Comment=Physics sandbox game\n"
 "MimeType=x-scheme-handler/ptsave;\n"
 "NoDisplay=true\n"
 "Categories=Game\n";
 	std::stringstream protocolfiledata;
-	protocolfiledata << protocolfiledata_tmp << "Exec=" << filename <<" ptsave %u\nPath=" << pathname << "\n";
+	protocolfiledata << protocolfiledata_tmp << "Exec=" << filename <<" --save %u\nPath=" << pathname << "\n";
 	f = fopen("powdertoy-tpt-ptsave.desktop", "wb");
 	if (!f)
 		return 0;
@@ -392,13 +409,13 @@ bool Client::DoInstallation()
 	const char *desktopfiledata_tmp =
 "[Desktop Entry]\n"
 "Type=Application\n"
-"Name=Powder Toy\n"
+"Name=The Powder Toy\n"
 "Comment=Physics sandbox game\n"
 "MimeType=application/vnd.powdertoy.save;\n"
 "NoDisplay=true\n"
 "Categories=Game\n";
 	std::stringstream desktopfiledata;
-	desktopfiledata << desktopfiledata_tmp << "Exec=" << filename <<" open %f\nPath=" << pathname << "\n";
+	desktopfiledata << desktopfiledata_tmp << "Exec=" << filename <<" %f\nPath=" << pathname << "\n";
 	f = fopen("powdertoy-tpt.desktop", "wb");
 	if (!f)
 		return 0;
@@ -826,9 +843,8 @@ void Client::WritePrefs()
 	std::stringstream configFile;
 #else
 	std::ofstream configFile;
-	configFile.open("powder.pref", std::ios::trunc);
+	configFile.open((path + PATH_SEP "powder.pref").c_str(), std::ios::trunc);
 #endif
-	
 	if(configFile)
 	{
 		if(authUser.ID)
@@ -992,7 +1008,7 @@ void Client::MoveStampToFront(std::string stampID)
 
 SaveFile * Client::GetStamp(std::string stampID)
 {
-	std::string stampFile = std::string(STAMPS_DIR PATH_SEP + stampID + ".stm");
+	std::string stampFile = path + PATH_SEP STAMPS_DIR PATH_SEP + stampID + ".stm";
 	SaveFile * file = new SaveFile(stampID);
 	if (!FileExists(stampFile))
 		stampFile = stampID;
@@ -1017,12 +1033,7 @@ void Client::DeleteStamp(std::string stampID)
 	{
 		if((*iterator) == stampID)
 		{
-			std::stringstream stampFilename;
-			stampFilename << STAMPS_DIR;
-			stampFilename << PATH_SEP;
-			stampFilename << stampID;
-			stampFilename << ".stm";
-			remove(stampFilename.str().c_str());
+			remove((path + PATH_SEP STAMPS_DIR + stampID + ".stm").c_str());
 			stampIDs.erase(iterator);
 			return;
 		}
@@ -1047,13 +1058,13 @@ std::string Client::AddStamp(GameSave * saveData)
 	<< std::setw(8) << std::setfill('0') << std::hex << lastStampTime
 	<< std::setw(2) << std::setfill('0') << std::hex << lastStampName;
 
-	MakeDirectory(STAMPS_DIR);
+	MakeDirectory((path + PATH_SEP STAMPS_DIR).c_str());
 
 	unsigned int gameDataLength;
 	char * gameData = saveData->Serialise(gameDataLength);
 
 	std::ofstream stampStream;
-	stampStream.open(std::string(STAMPS_DIR PATH_SEP + saveID.str()+".stm").c_str(), std::ios::binary);
+	stampStream.open((path + PATH_SEP STAMPS_DIR PATH_SEP + saveID.str()+".stm").c_str(), std::ios::binary);
 	stampStream.write((const char *)gameData, gameDataLength);
 	stampStream.close();
 
@@ -1068,10 +1079,10 @@ std::string Client::AddStamp(GameSave * saveData)
 
 void Client::updateStamps()
 {
-	MakeDirectory(STAMPS_DIR);
+	MakeDirectory((path + PATH_SEP STAMPS_DIR).c_str());
 
 	std::ofstream stampsStream;
-	stampsStream.open(std::string(STAMPS_DIR PATH_SEP "stamps.def").c_str(), std::ios::binary);
+	stampsStream.open((path + PATH_SEP STAMPS_DIR PATH_SEP "stamps.def").c_str(), std::ios::binary);
 	for (std::list<std::string>::const_iterator iterator = stampIDs.begin(), end = stampIDs.end(); iterator != end; ++iterator)
 	{
 		stampsStream.write((*iterator).c_str(), 10);

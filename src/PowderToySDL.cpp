@@ -73,6 +73,7 @@ struct arguments {
 	std::string proxy;
 	std::string file;
 	std::string save;
+	std::string config;
 };
 
 int desktopWidth = 1280, desktopHeight = 1024;
@@ -368,7 +369,7 @@ SDL_Surface * SDLSetScreen(int newScale, bool newFullscreen)
 void usage()
 {
 	printf(
-	"Usage: powder [-S 1|2] [-k|-K] [-p proxy[:port]] [-s saveid[#title]] [FILE]\n"
+	"Usage: powder [-S 1|2] [-k|-K] [-p proxy[:port]] [-s saveid[#title]] [-c config-dir] [FILE]\n"
 	"       powder -h\n"
 	"\n"
 	"Options:\n"
@@ -380,6 +381,12 @@ void usage()
 	"                  If omitted, port is set to 80\n"
 	"    -s --save     Load a save from the server\n"
 	"                  If title is specified, a dialog box with it will be shown\n"
+	"    -c --config   Force the configuration and stamps directory\n"
+#ifdef WIN
+	"                  By default, loads from %%AppData%%\\powder\\\n"
+#else
+	"                  By default, loads from ~/.powder/\n"
+#endif
 	"    -h --help     Print this help\n"
 	"    FILE          A stamp (.stm) or save file (.cps) to be opened\n"
 	"                  If unspecified, opens a blank simulation\n"
@@ -394,6 +401,7 @@ struct arguments readArguments(int argc, char* argv[])
 	args.proxy = "";
 	args.file = "";
 	args.save = "";
+	args.config = "";
 	bool seenfile = false;
 	bool dashdash = false;
 	for (int i=1; i<argc; i++)
@@ -460,6 +468,17 @@ struct arguments readArguments(int argc, char* argv[])
 				exit(EXIT_FAILURE);
 			}
 			args.save = std::string(argv[i+1]);
+			i++;
+		}
+		else if (!strcmp(argv[i], "--config") || !strcmp(argv[i], "-c"))
+		{
+			if (i+1 == argc)
+			{
+				printf("%s cannot be the last argument\n", argv[i]);
+				usage();
+				exit(EXIT_FAILURE);
+			}
+			args.config = std::string(argv[i+1]);
 			i++;
 		}
 		else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
@@ -849,8 +868,21 @@ int main(int argc, char * argv[])
 	currentWidth = WINDOWW; 
 	currentHeight = WINDOWH;
 
-
 	struct arguments args = readArguments(argc, argv);
+
+	std::string confLoc;
+
+	if(args.config.length())
+		confLoc = args.config;
+	else
+	{
+#ifdef WIN
+		confLoc = getenv("APPDATA") ? std::string(getenv("APPDATA")) + PATH_SEP "powder" : ".";
+#else
+		confLoc = getenv("HOME") ? std::string(getenv("HOME")) + PATH_SEP ".powder" : ".";
+#endif
+	}
+	Client::Ref().SetPath(confLoc);
 
 	int tempScale = 1;
 	bool tempFullscreen = false;

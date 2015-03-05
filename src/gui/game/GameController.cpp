@@ -753,9 +753,9 @@ void GameController::Tick()
 		((LuaScriptInterface*)commandInterface)->Init();
 #endif
 #if !defined(MACOSX) && !defined(NO_INSTALL_CHECK)
-		if(!Client::Ref().GetPrefBool("InstallCheck", false))
+		if(Client::Ref().GetPrefInteger("InstallCheck", 0) < 322)
 		{
-			Client::Ref().SetPref("InstallCheck", true);
+			Client::Ref().SetPref("InstallCheck", BUILD_NUM);
 			Install();
 		}
 #endif
@@ -1118,7 +1118,7 @@ void GameController::OpenLocalSaveWindow(bool asCurrent)
 		}
 		else if (gameModel->GetSaveFile())
 		{
-			Client::Ref().MakeDirectory(LOCAL_SAVE_DIR);
+			Client::Ref().MakeDirectory((Client::Ref().GetPath() + PATH_SEP LOCAL_SAVE_DIR).c_str());
 			if (Client::Ref().WriteFile(gameSave->Serialise(), gameModel->GetSaveFile()->GetName()))
 				new ErrorMessage("Error", "Unable to write save file.");
 		}
@@ -1165,7 +1165,7 @@ void GameController::OpenLocalBrowse()
 			delete file;
 		}
 	};
-	new FileBrowserActivity(LOCAL_SAVE_DIR PATH_SEP, new LocalSaveOpenCallback(this));
+	new FileBrowserActivity(Client::Ref().GetPath() + PATH_SEP LOCAL_SAVE_DIR PATH_SEP, new LocalSaveOpenCallback(this));
 }
 
 void GameController::OpenLogin()
