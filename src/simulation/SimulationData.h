@@ -97,6 +97,7 @@
 #define GT_STAR 144
 #define GT_FROG 145
 #define GT_BRAN 146
+#define GT_VARI 147
 
 //New IDs for GOL types
 #define NGT_GOL 0
@@ -123,6 +124,7 @@
 #define NGT_STAR 21
 #define NGT_FROG 22
 #define NGT_BRAN 23
+#define NGT_VARI 24
 
 //replace mode / specific delete flags
 #define REPLACE_MODE 0x1

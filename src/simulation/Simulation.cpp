@@ -1913,6 +1913,7 @@ void Simulation::clear_sim(void)
 	memset(photons, 0, sizeof(photons));
 	memset(wireless, 0, sizeof(wireless));
 	memset(gol2, 0, sizeof(gol2));
+	memset(golvari, 0, sizeof(golvari));
 	memset(portalp, 0, sizeof(portalp));
 	memset(fighters, 0, sizeof(fighters));
 	std::fill(elementCount, elementCount+PT_NUM, 0);
@@ -4659,6 +4660,8 @@ void Simulation::SimulateGoL()
 									if (!gol2[ady][adx][i])
 									{
 										gol2[ady][adx][i] = (golnum<<4)+1;
+										if(golnum == NGT_VARI + 1)
+											golvari[ady][adx] = parts[r>>8].tmp2;
 										break;
 									}
 									else if((gol2[ady][adx][i]>>4)==golnum)
@@ -4698,15 +4701,18 @@ void Simulation::SimulateGoL()
 					{
 						if (!gol2[ny][nx][i]) break;
 						golnum = (gol2[ny][nx][i]>>4);
-						if (grule[golnum][neighbors]>=2 && (gol2[ny][nx][i]&0xF)>=(neighbors%2)+neighbors/2)
+						if ((golnum == NGT_VARI + 1 ? (golvari[ny][nx] >> (neighbors * 2)) & 3 : grule[golnum][neighbors]) >= 2 && (gol2[ny][nx][i]&0xF)>=(neighbors%2)+neighbors/2)
 						{
 							if (golnum<creategol) creategol=golnum;
 						}
 					}
 					if (creategol<0xFF)
-						create_part(-1, nx, ny, PT_LIFE, creategol-1);
+					{
+						int part = create_part(-1, nx, ny, PT_LIFE, creategol-1);
+						parts[part].tmp2 = golvari[ny][nx];
+					}
 				}
-				else if (grule[golnum][neighbors-1]==0 || grule[golnum][neighbors-1]==2)//subtract 1 because it counted itself
+				else if (((golnum == NGT_VARI + 1 ? golvari[ny][nx] >> (neighbors * 2 - 2) : grule[golnum][neighbors-1]) & 1) == 0)//subtract 1 because it counted itself
 				{
 					if (parts[r>>8].tmp==grule[golnum][9]-1)
 						parts[r>>8].tmp --;
