@@ -2289,7 +2289,24 @@ void GameView::OnDraw()
 				else if ((type == PT_PIPE || type == PT_PPIP) && c->IsValidElement(ctype))
 					sampleInfo << c->ElementResolve(type, -1) << " with " << c->ElementResolve(ctype, (int)sample.particle.pavg[1]);
 				else if (type == PT_LIFE)
+				{
 					sampleInfo << c->ElementResolve(type, ctype);
+					if (ctype == NGT_VARI)
+					{
+						int rule = sample.particle.tmp2;
+						sampleInfo << " B";
+						int i;
+						for(i = 0; i < 9; i++)
+							if(rule & (2 << (i * 2)))
+								sampleInfo << i;
+						sampleInfo << "/S";
+						for(i = 0; i < 9; i++)
+							if(rule & (1 << (i * 2)))
+								sampleInfo << i;
+						if(rule >> 18)
+							sampleInfo << "/" << ((rule >> 18) + 2);
+					}
+				}
 				else if (type == PT_FILT)
 				{
 					sampleInfo << c->ElementResolve(type, ctype);
@@ -2332,6 +2349,21 @@ void GameView::OnDraw()
 					sampleInfo << c->ElementResolve(type, ctype);
 				else
 					sampleInfo << c->ElementResolve(type, ctype);
+				if (ctype == NGT_VARI)
+				{
+					int rule = sample.particle.tmp2;
+					sampleInfo << " B";
+					int i;
+					for(i = 0; i < 9; i++)
+						if(rule & (2 << (i * 2)))
+							sampleInfo << i;
+					sampleInfo << "/S";
+					for(i = 0; i < 9; i++)
+						if(rule & (1 << (i * 2)))
+							sampleInfo << i;
+					if(rule >> 18)
+						sampleInfo << "/" << ((rule >> 18) + 2);
+				}
 				sampleInfo << ", Temp: " << std::fixed << sample.particle.temp - 273.15f << " C";
 				sampleInfo << ", Pressure: " << std::fixed << sample.AirPressure;
 			}

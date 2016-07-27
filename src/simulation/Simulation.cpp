@@ -4640,7 +4640,9 @@ void Simulation::SimulateGoL()
 					continue;
 				}
 				gol[ny][nx] = golnum;
-				if (parts[r>>8].tmp == grule[golnum][9]-1)
+				if (golnum == NGT_VARI + 1 && parts[r>>8].tmp == 0)
+					parts[r>>8].tmp = (parts[r>>8].tmp2 >> 18) + 1;
+				if (parts[r>>8].tmp == (golnum == NGT_VARI + 1 ? (parts[r>>8].tmp2 >> 18) + 1 : grule[golnum][9]-1))
 				{
 					for (int nnx = -1; nnx < 2; nnx++)
 					{
@@ -4709,12 +4711,16 @@ void Simulation::SimulateGoL()
 					if (creategol<0xFF)
 					{
 						int part = create_part(-1, nx, ny, PT_LIFE, creategol-1);
-						parts[part].tmp2 = golvari[ny][nx];
+						if(creategol == NGT_VARI + 1)
+						{
+							parts[part].tmp2 = golvari[ny][nx];
+							parts[part].tmp = (golvari[ny][nx] >> 18) + 1;
+						}
 					}
 				}
 				else if (((golnum == NGT_VARI + 1 ? golvari[ny][nx] >> (neighbors * 2 - 2) : grule[golnum][neighbors-1]) & 1) == 0)//subtract 1 because it counted itself
 				{
-					if (parts[r>>8].tmp==grule[golnum][9]-1)
+					if (parts[r>>8].tmp==(golnum == NGT_VARI + 1 ? (golvari[ny][nx] >> 18) + 1 : grule[golnum][9]-1))
 						parts[r>>8].tmp --;
 				}
 				for (int z = 0; z < 9; z++)

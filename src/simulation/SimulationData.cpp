@@ -69,7 +69,7 @@ int * LoadGOLRules(int & golRuleCount)
 		{0,0,2,1,1,1,1,2,2,6},//STAR
 		{0,1,1,2,2,0,0,0,0,3},//FROG
 		{0,0,2,0,2,0,3,0,0,3},//BRAN
-		{0,0,0,0,0,0,0,0,0,2},//VARI
+		{0,0,0,0,0,0,0,0,0,1},//VARI
 	};
 	golRuleCount = NGOL+1;
 	int * golRulesT = (int*)malloc((golRuleCount*10)*sizeof(int));

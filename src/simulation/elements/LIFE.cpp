@@ -116,7 +116,7 @@ int Element_LIFE::graphics(GRAPHICS_FUNC_ARGS)
 		int r = (rule & 0x1) << 7 | (rule & 0x4) << 4 | (rule & 0x10) << 1 | (rule & 0x40) >> 2 | (rule & 0x4000) >> 19 | (rule & 0x10000) >> 22;
 		int g = (rule & 0x2) << 6 | (rule & 0x8) << 3 | (rule & 0x20) | (rule & 0x80) >> 3 | (rule & 0x8000) >> 20 | (rule & 0x20000) >> 23;
 		int b = (rule & 0x100) >> 1 | (rule & 0x200) >> 3 | (rule & 0x400) >> 5 | (rule & 0x800) >> 7 | (rule & 0x1000) >> 9 | (rule & 0x2000) >> 11;
-		pc = PIXRGB(r, g, b);
+		pc = PIXRGB(0xFF^r, 0xFF^g, 0xFF^b);
 	}
 	else if (cpart->ctype >= 0 && cpart->ctype < NGOL)
 	{
