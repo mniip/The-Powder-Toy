@@ -7,7 +7,7 @@
 #include "client/HTTP.h"
 #include "client/Client.h"
 #include "Update.h"
-#include "Misc.h"
+#include "Platform.h"
 
 
 class UpdateDownloadTask : public Task
@@ -42,10 +42,9 @@ private:
 		data = http_async_req_stop(request, &status, &dataLength);
 		if (status!=200)
 		{
-			if (data)
-				free(data);
+			free(data);
 			errorStream << "Server responded with Status " << status;
-			notifyError("Could not download update");
+			notifyError("Could not download update: " + errorStream.str());
 			return false;
 		}
 		if (!data)
@@ -119,7 +118,11 @@ private:
 
 UpdateActivity::UpdateActivity() {
 	std::stringstream file;
+#ifdef UPDATESERVER
+	file << "http://" << UPDATESERVER << Client::Ref().GetUpdateInfo().File;
+#else
 	file << "http://" << SERVER << Client::Ref().GetUpdateInfo().File;
+#endif
 	updateDownloadTask = new UpdateDownloadTask(file.str(), this);
 	updateWindow = new TaskWindow("Downloading update...", updateDownloadTask, true);
 }
@@ -149,13 +152,19 @@ void UpdateActivity::NotifyError(Task * sender)
 		virtual void ConfirmCallback(ConfirmPrompt::DialogueResult result) {
 			if (result == ConfirmPrompt::ResultOkay)
 			{
-				OpenURI("http://powdertoy.co.uk/Download.html");
+#ifndef UPDATESERVER
+				Platform::OpenURI("http://powdertoy.co.uk/Download.html");
+#endif
 			}
 			a->Exit();
 		}
 		virtual ~ErrorMessageCallback() { }
 	};
+#ifdef UPDATESERVER
+	new ConfirmPrompt("Autoupdate failed", "Please go online to manually download a newer version.\nError: " + sender->GetError(), new ErrorMessageCallback(this));
+#else
 	new ConfirmPrompt("Autoupdate failed", "Please visit the website to download a newer version.\nError: " + sender->GetError(), new ErrorMessageCallback(this));
+#endif
 }
 
 

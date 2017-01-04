@@ -17,7 +17,7 @@ class ourSpawn:
 		startupinfo = subprocess.STARTUPINFO()
 		startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 		proc = subprocess.Popen(cmdline, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-			stderr=subprocess.PIPE, startupinfo=startupinfo, shell = False, env = env)
+			stderr=subprocess.PIPE, startupinfo=startupinfo, shell=False, env=env)
 		data, err = proc.communicate()
 		rv = proc.wait()
 		if rv:
@@ -62,6 +62,7 @@ AddSconsOption('native', False, False, "Enable optimizations specific to your cp
 AddSconsOption('release', True, False, "Enable loop / compiling optimizations (default).")
 
 AddSconsOption('debugging', False, False, "Compile with debug symbols.")
+AddSconsOption('symbols', False, False, "Preserve (don't strip) symbols")
 AddSconsOption('static', False, False, "Compile statically.")
 AddSconsOption('opengl', False, False, "Build with OpenGL interface support.")
 AddSconsOption('opengl-renderer', False, False, "Build with OpenGL renderer support (turns on --opengl).") #Note: this has nothing to do with --renderer, only tells the game to render particles with opengl
@@ -95,42 +96,48 @@ if msvc and platform != "Windows":
 
 #Create SCons Environment
 if GetOption('msvc'):
-	env = Environment(tools = ['default'], ENV = {'PATH' : os.environ['PATH'], 'TMP' : os.environ['TMP']}, TARGET_ARCH = 'x86')
+	env = Environment(tools=['default'], ENV={'PATH' : os.environ['PATH'], 'TMP' : os.environ['TMP']}, TARGET_ARCH='x86')
 elif platform == "Windows" and not GetOption('msvc'):
-	env = Environment(tools = ['mingw'], ENV = {'PATH' : os.environ['PATH']})
+	env = Environment(tools=['mingw'], ENV={'PATH' : os.environ['PATH']})
 else:
-	env = Environment(tools = ['default'], ENV = {'PATH' : os.environ['PATH']})
+	env = Environment(tools=['default'], ENV={'PATH' : os.environ['PATH']})
 
 #attempt to automatically find cross compiler
 if not tool and compilePlatform == "Linux" and compilePlatform != platform:
 	if platform == "Darwin":
 		crossList = ["i686-apple-darwin9", "i686-apple-darwin10"]
 	elif not GetOption('64bit'):
-		crossList = ["mingw32", "i386-mingw32msvc", "i486-mingw32msvc", "i586-mingw32msvc", "i686-mingw32msvc"]
+		crossList = ["mingw32", "i686-w64-mingw32", "i386-mingw32msvc", "i486-mingw32msvc", "i586-mingw32msvc", "i686-mingw32msvc"]
 	else:
-		crossList = ["x86_64-w64-mingw32", "i686-w64-mingw32", "amd64-mingw32msvc"]
+		crossList = ["x86_64-w64-mingw32", "amd64-mingw32msvc"]
 	for i in crossList:
+		#found a cross compiler, set tool here, which will update everything in env later
 		if WhereIs("{0}-g++".format(i)):
-			env['ENV']['PATH'] = "/usr/{0}/bin:{1}".format(i, os.environ['PATH'])
 			tool = i+"-"
 			break
 	if not tool:
 		print("Could not automatically find cross compiler, use --tool to specify manually")
 
 #set tool prefix
-#more things may to be set (http://clam-project.org/clam/trunk/CLAM/scons/sconstools/crossmingw.py), but this works for us
+#more things may need to be set (http://clam-project.org/clam/trunk/CLAM/scons/sconstools/crossmingw.py), but this works for us
 if tool:
 	env['CC'] = tool+env['CC']
 	env['CXX'] = tool+env['CXX']
 	if platform == "Windows":
 		env['RC'] = tool+env['RC']
 	env['STRIP'] = tool+'strip'
+	if os.path.isdir("/usr/{0}/bin".format(tool[:-1])):
+		env['ENV']['PATH'] = "/usr/{0}/bin:{1}".format(tool[:-1], os.environ['PATH'])
+	if platform == "Darwin":
+		sdlconfigpath = "/usr/lib/apple/SDKs/MacOSX10.5.sdk/usr/bin"
+		if os.path.isdir(sdlconfigpath):
+			env['ENV']['PATH'] = "{0}:{1}".format(sdlconfigpath, env['ENV']['PATH'])
 
 #copy environment variables because scons doesn't do this by default
 for var in ["CC","CXX","LD","LIBPATH"]:
 	if var in os.environ:
 		env[var] = os.environ[var]
-		print "copying enviroment variable {0}={1!r}".format(var,os.environ[var])
+		print "copying environment variable {0}={1!r}".format(var,os.environ[var])
 # variables containing several space separated things
 for var in ["CFLAGS","CCFLAGS","CXXFLAGS","LINKFLAGS","CPPDEFINES","CPPPATH"]:
 	if var in os.environ:
@@ -138,7 +145,7 @@ for var in ["CFLAGS","CCFLAGS","CXXFLAGS","LINKFLAGS","CPPDEFINES","CPPPATH"]:
 			env[var] += SCons.Util.CLVar(os.environ[var])
 		else:
 			env[var] = SCons.Util.CLVar(os.environ[var])
-		print "copying enviroment variable {0}={1!r}".format(var,os.environ[var])
+		print "copying environment variable {0}={1!r}".format(var,os.environ[var])
 
 #Used for intro text / executable name, actual bit flags are only set if the --64bit/--32bit command line args are given
 def add32bitflags(env):
@@ -203,12 +210,16 @@ def CheckBit(context):
 def CheckFramework(context, framework):
 	import SCons.Conftest
 	#Extreme hack, TODO: maybe think of a better one (like replicating CheckLib here) or at least just fix the message
-	ret = SCons.Conftest.CheckLib(context, ['m" -framework {0}"'.format(framework)], autoadd = 0)
+	oldLinkFlags = context.env.Append(LINKFLAGS=["-framework", framework])
+	context.Display("Checking for Darwin Framework {0}...".format(framework))
+	ret = SCons.Conftest.CheckLib(context, ["m"], autoadd = 0)
 	context.did_show_result = 1
 	if not ret:
 		context.env.Append(LINKFLAGS=["-framework", framework])
 		if framework != "Cocoa":
 			env.Append(CPPPATH=['/Library/Frameworks/{0}.framework/Headers/'.format(framework)])
+	else:
+		context.env.Replace(LINKFLAGS=oldLinkFlags)
 	return not ret
 
 #function that finds libraries and appends them to LIBS
@@ -216,9 +227,9 @@ def findLibs(env, conf):
 	#Windows specific libs
 	if platform == "Windows":
 		if msvc:
-			libChecks = ['shell32', 'wsock32', 'user32', 'Advapi32']
+			libChecks = ['shell32', 'wsock32', 'user32', 'Advapi32', 'ws2_32']
 			if GetOption('static'):
-				libChecks += ['msvcrt', 'dxguid']
+				libChecks += ['libcmt', 'dxguid']
 			for i in libChecks:
 				if not conf.CheckLib(i):
 					FatalError("Error: some windows libraries not found or not installed, make sure your compiler is set up correctly")
@@ -229,20 +240,23 @@ def findLibs(env, conf):
 		if not conf.CheckLib('SDLmain'):
 			FatalError("libSDLmain not found or not installed")
 
-	if platform == "Darwin":
-		if not conf.CheckFramework("SDL"):
-			FatalError("SDL framework not found or not installed")
-	elif not GetOption('renderer'):
-		if platform != "Darwin":
-			#Look for SDL
-			if not conf.CheckLib("SDL"):
-				FatalError("SDL development library not found or not installed")
-			if platform == "Linux" or compilePlatform == "Linux":
-				try:
-					env.ParseConfig('sdl-config --cflags')
+	if not GetOption('renderer'):
+		#Look for SDL
+		runSdlConfig = platform == "Linux" or compilePlatform == "Linux"
+		if platform == "Darwin" and conf.CheckFramework("SDL"):
+			runSdlConfig = False
+		elif not conf.CheckLib("SDL"):
+			FatalError("SDL development library not found or not installed")
+
+		if runSdlConfig:
+			try:
+				env.ParseConfig('sdl-config --cflags')
+				if GetOption('static'):
+					env.ParseConfig('sdl-config --static-libs')
+				else:
 					env.ParseConfig('sdl-config --libs')
-				except:
-					pass
+			except:
+				pass
 
 	#look for SDL.h
 	if not GetOption('renderer') and not conf.CheckCHeader('SDL.h'):
@@ -255,12 +269,12 @@ def findLibs(env, conf):
 		#Look for Lua
 		luaver = "lua5.1"
 		if GetOption('luajit'):
-			if not conf.CheckLib(['luajit-5.1', 'luajit5.1', 'luajit']):
+			if not conf.CheckLib(['luajit-5.1', 'luajit5.1', 'luajit', 'libluajit']):
 				FatalError("luajit development library not found or not installed")
 			env.Append(CPPDEFINES=["LUAJIT"])
 			luaver = "luajit"
 		elif GetOption('lua52'):
-			if not conf.CheckLib(['lua5.2', 'lua-5.2', 'lua52']):
+			if not conf.CheckLib(['lua5.2', 'lua-5.2', 'lua52', 'lua']):
 				FatalError("lua5.2 development library not found or not installed")
 			env.Append(CPPDEFINES=["LUA_COMPAT_ALL"])
 			luaver = "lua5.2"
@@ -292,8 +306,12 @@ def findLibs(env, conf):
 				else:
 					FatalError("lua.h not found")
 
+		#needed for static lua compiles (in some cases)
+		if platform == "Linux":
+			conf.CheckLib('dl')
+
 	#Look for fftw
-	if not GetOption('nofft') and not conf.CheckLib(['fftw3f', 'fftw3f-3', 'libfftw3f-3']):
+	if not GetOption('nofft') and not conf.CheckLib(['fftw3f', 'fftw3f-3', 'libfftw3f-3', 'libfftw3f']):
 			FatalError("fftw3f development library not found or not installed")
 
 	#Look for bz2
@@ -311,7 +329,7 @@ def findLibs(env, conf):
 	#Look for pthreads
 	if not conf.CheckLib(['pthread', 'pthreadVC2']):
 		FatalError("pthreads development library not found or not installed")
-	
+
 	if msvc:
 		if not conf.CheckHeader('dirent.h') or not conf.CheckHeader('fftw3.h') or not conf.CheckHeader('pthread.h') or not conf.CheckHeader('zlib.h'):
 			FatalError("Required headers not found")
@@ -319,7 +337,7 @@ def findLibs(env, conf):
 		#Look for libm
 		if not conf.CheckLib('m'):
 			FatalError("libm not found or not installed")
-	
+
 	#Look for OpenGL libraries
 	if GetOption('opengl'):
 		if platform == "Linux":
@@ -329,7 +347,7 @@ def findLibs(env, conf):
 				env.ParseConfig('pkg-config --libs glew gl glu')
 			except:
 				FatalError(sys.exc_info()[0])
-				
+
 		elif platform == "Windows":
 			if not conf.CheckLib('opengl32'):
 				FatalError("opengl32 not found or not installed")
@@ -338,7 +356,7 @@ def findLibs(env, conf):
 		elif platform == "Darwin":
 			if not conf.CheckFramework("OpenGL"):
 				FatalError("OpenGL framework not found or not installed")
-		
+
 	if platform == "Linux":
 		if not conf.CheckLib('X11'):
 			FatalError("X11 development library not found or not installed")
@@ -376,19 +394,21 @@ if not msvc:
 	else:
 		env.Append(CXXFLAGS=['-std=c++98'])
 	env.Append(CXXFLAGS=['-Wno-invalid-offsetof'])
+	if platform == "Linux":
+		env.Append(CXXFLAGS=['-Wno-unused-result'])
 
 
 #Add platform specific flags and defines
 if platform == "Windows":
-	env.Append(CPPDEFINES=["WIN", "_WIN32_WINNT=0x0501"])
+	env.Append(CPPDEFINES=["WIN", "_WIN32_WINNT=0x0501", "_USING_V110_SDK71_"])
 	if msvc:
-		env.Append(CCFLAGS=['/Gm', '/Zi', '/EHsc']) #enable minimal rebuild, enable exceptions
-		env.Append(LINKFLAGS=['/SUBSYSTEM:WINDOWS', '/OPT:REF', '/OPT:ICF'])
+		env.Append(CCFLAGS=['/Gm', '/Zi', '/EHsc', '/FS']) #enable minimal rebuild, enable exceptions, allow -j to work in debug builds
+		env.Append(LINKFLAGS=['/SUBSYSTEM:WINDOWS,"5.01"', '/OPT:REF', '/OPT:ICF'])
 		if GetOption('static'):
 			env.Append(CCFLAGS=['/GL']) #whole program optimization (linker may freeze indefinitely without this)
-			env.Append(LINKFLAGS=['/NODEFAULTLIB:LIBCMT.lib', '/LTCG'])
-		else:
-			env.Append(LINKFLAGS=['/NODEFAULTLIB:msvcrt.lib'])
+			env.Append(LINKFLAGS=['/NODEFAULTLIB:msvcrt.lib', '/LTCG'])
+		elif not GetOption('debugging'):
+			env.Append(LINKFLAGS=['/NODEFAULTLIB:msvcrtd.lib'])
 	else:
 		env.Append(LINKFLAGS=['-mwindows'])
 elif platform == "Linux":
@@ -435,6 +455,7 @@ if GetOption('debugging'):
 			env.Append(CCFLAGS=['/MDd'])
 	else:
 		env.Append(CCFLAGS=['-Wall', '-g'])
+		env.Append(CPPDEFINES=['DEBUG'])
 elif GetOption('release'):
 	if msvc:
 		env.Append(CCFLAGS=['/O2', '/fp:fast'])
@@ -448,12 +469,11 @@ elif GetOption('release'):
 			env.Append(CCFLAGS=['-funsafe-loop-optimizations'])
 
 if GetOption('static'):
-	if not msvc:
-		env.Append(CCFLAGS=['-static-libgcc'])
-		env.Append(LINKFLAGS=['-static-libgcc'])
 	if platform == "Windows":
 		env.Append(CPPDEFINES=['PTW32_STATIC_LIB'])
-		if not msvc:
+		if msvc:
+			env.Append(CPPDEFINES=['ZLIB_WINAPI'])
+		else:
 			env.Append(LINKFLAGS=['-Wl,-Bstatic'])
 
 
@@ -509,13 +529,14 @@ sources = Glob("src/*.cpp") + Glob("src/*/*.cpp") + Glob("src/*/*/*.cpp") + Glob
 if not GetOption('nolua') and not GetOption('renderer'):
 	sources += Glob("src/lua/socket/*.c") + Glob("src/lua/LuaCompat.c")
 
-if platform == "Windows" and not msvc:
+if platform == "Windows":
 	sources += env.RES('resources/powder-res.rc')
-	sources = filter(lambda source: not 'src\\simulation\\Gravity.cpp' in str(source), sources)
-	sources = filter(lambda source: not 'src/simulation/Gravity.cpp' in str(source), sources)
-	envCopy = env.Clone()
-	envCopy.Append(CCFLAGS='-mstackrealign')
-	sources += envCopy.Object('src/simulation/Gravity.cpp')
+	if not not msvc:
+		sources = filter(lambda source: not 'src\\simulation\\Gravity.cpp' in str(source), sources)
+		sources = filter(lambda source: not 'src/simulation/Gravity.cpp' in str(source), sources)
+		envCopy = env.Clone()
+		envCopy.Append(CCFLAGS='-mstackrealign')
+		sources += envCopy.Object('src/simulation/Gravity.cpp')
 elif platform == "Darwin":
 	sources += ["src/SDLMain.m"]
 
@@ -543,7 +564,7 @@ def strip():
 		os.system("{0} {1}/{2}".format(env['STRIP'] if 'STRIP' in env else "strip", GetOption('builddir'), programName))
 	except:
 		print("Couldn't strip binary")
-if not GetOption('debugging') and not GetOption('clean') and not GetOption('help') and not msvc:
+if not GetOption('debugging') and not GetOption('symbols') and not GetOption('clean') and not GetOption('help') and not msvc:
 	atexit.register(strip)
 
 #Long command line fix for mingw on windows

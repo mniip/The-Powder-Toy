@@ -9,6 +9,7 @@
 #include "graphics/Graphics.h"
 #include "ContextMenu.h"
 #include "Keys.h"
+#include "Mouse.h"
 
 namespace ui {
 
@@ -25,10 +26,8 @@ AvatarButton::AvatarButton(Point position, Point size, std::string username):
 AvatarButton::~AvatarButton()
 {
 	RequestBroker::Ref().DetachRequestListener(this);
-	if(avatar)
-		delete avatar;
-	if(actionCallback)
-		delete actionCallback;
+	delete avatar;
+	delete actionCallback;
 }
 
 void AvatarButton::Tick(float dt)
@@ -45,8 +44,7 @@ void AvatarButton::OnResponseReady(void * imagePtr, int identifier)
 	VideoBuffer * image = (VideoBuffer*)imagePtr;
 	if(image)
 	{
-		if(avatar)
-			delete avatar;
+		delete avatar;
 		avatar = image;
 	}
 }
@@ -82,7 +80,7 @@ void AvatarButton::OnContextMenuAction(int item)
 
 void AvatarButton::OnMouseClick(int x, int y, unsigned int button)
 {
-	if(button == BUTTON_RIGHT)
+	if(button == SDL_BUTTON_RIGHT)
 	{
 		if(menu)
 			menu->Show(GetScreenPos() + ui::Point(x, y));

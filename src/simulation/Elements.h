@@ -15,6 +15,7 @@
 #define TYPE_SOLID			0x00004  //4 Solids
 #define TYPE_GAS			0x00008  //8 Gasses (Includes plasma)
 #define TYPE_ENERGY			0x00010  //16 Energy (Thunder, Light, Neutrons etc.)
+#define STATE_FLAGS			0x0001F
 #define PROP_CONDUCTS		0x00020  //32 Conducts electricity
 #define PROP_BLACK			0x00040  //64 Absorbs Photons (not currently implemented or used, a photwl attribute might be better)
 #define PROP_NEUTPENETRATE	0x00080  //128 Penetrated by neutrons
@@ -39,11 +40,6 @@
 #define FLAG_PHOTDECO  0x8 // compatibility with old saves (decorated photons), only applies to PHOT. Having the same value as FLAG_MOVABLE is fine because they apply to different elements, and this saves space for future flags,
 
 
-#define ST_NONE 0
-#define ST_SOLID 1
-#define ST_LIQUID 2
-#define ST_GAS 3
-
 #define UPDATE_FUNC_ARGS Simulation* sim, int i, int x, int y, int surround_space, int nt, Particle *parts, int pmap[YRES][XRES]
 #define UPDATE_FUNC_SUBCALL_ARGS sim, i, x, y, surround_space, nt, parts, pmap
 
@@ -51,6 +47,8 @@
 #define GRAPHICS_FUNC_SUBCALL_ARGS ren, cpart, nx, ny, pixel_mode, cola, colr, colg, colb, firea, firer, fireg, fireb
 
 #define BOUNDS_CHECK true
+
+#define REAL_BOUNDS_CHECK(x, y) (x >= 0 && x < XRES && y >= 0 && x < YRES)
 
 #define OLD_PT_WIND 147
 

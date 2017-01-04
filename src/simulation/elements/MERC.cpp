@@ -6,9 +6,9 @@ Element_MERC::Element_MERC()
 	Name = "MERC";
 	Colour = PIXPACK(0x736B6D);
 	MenuVisible = 1;
-	MenuSection = SC_ELEC;
+	MenuSection = SC_LIQUID;
 	Enabled = 1;
-	
+
 	Advection = 0.4f;
 	AirDrag = 0.04f * CFDS;
 	AirLoss = 0.94f;
@@ -18,21 +18,20 @@ Element_MERC::Element_MERC()
 	Diffusion = 0.00f;
 	HotAir = 0.000f	* CFDS;
 	Falldown = 2;
-	
+
 	Flammable = 0;
 	Explosive = 0;
 	Meltable = 0;
 	Hardness = 20;
-	
+
 	Weight = 91;
-	
+
 	Temperature = R_TEMP+0.0f	+273.15f;
 	HeatConduct = 251;
 	Description = "Mercury. Volume changes with temperature, Conductive.";
-	
-	State = ST_LIQUID;
+
 	Properties = TYPE_LIQUID|PROP_CONDUCTS|PROP_NEUTABSORB|PROP_LIFE_DEC;
-	
+
 	LowPressure = IPL;
 	LowPressureTransition = NT;
 	HighPressure = IPH;
@@ -41,18 +40,28 @@ Element_MERC::Element_MERC()
 	LowTemperatureTransition = NT;
 	HighTemperature = ITH;
 	HighTemperatureTransition = NT;
-	
+
 	Update = &Element_MERC::update;
-	
 }
 
 //#TPT-Directive ElementHeader Element_MERC static int update(UPDATE_FUNC_ARGS)
 int Element_MERC::update(UPDATE_FUNC_ARGS)
- {
+{
 	int r, rx, ry, trade, np;
-	int maxtmp = ((10000/(parts[i].temp + 1))-1);
-	if ((10000%((int)parts[i].temp+1))>rand()%((int)parts[i].temp+1))
+	const int absorbScale = 10000;// max number of particles that can be condensed into one
+	int maxtmp = ((absorbScale/(parts[i].temp + 1))-1);
+	if ((absorbScale%((int)parts[i].temp+1))>rand()%((int)parts[i].temp+1))
 		maxtmp ++;
+
+	if (parts[i].tmp < 0)
+	{
+		parts[i].tmp = 0;
+	}
+	if (parts[i].tmp > absorbScale)
+	{
+		parts[i].tmp = absorbScale;
+	}
+
 	if (parts[i].tmp < maxtmp)
 	{
 		for (rx=-1; rx<2; rx++)

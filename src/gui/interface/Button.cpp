@@ -8,7 +8,6 @@ namespace ui {
 
 Button::Button(Point position, Point size, std::string buttonText, std::string toolTip):
 	Component(position, size),
-	Enabled(true),
 	ButtonText(buttonText),
 	toolTip(toolTip),
 	isButtonDown(false),
@@ -84,9 +83,9 @@ void Button::Draw(const Point& screenPos)
 	ui::Colour borderColour = Appearance.BorderInactive;
 	ui::Colour backgroundColour = Appearance.BackgroundInactive;
 
-	if(Enabled)
+	if (Enabled)
 	{
-		if(isButtonDown || (isTogglable && toggle))
+		if (isButtonDown || (isTogglable && toggle))
 		{
 			textColour = Appearance.TextActive;
 			borderColour = Appearance.BorderActive;
@@ -164,6 +163,13 @@ void Button::OnMouseUnclick(int x, int y, unsigned int button)
 	}
 }
 
+void Button::OnMouseUp(int x, int y, unsigned int button)
+{
+	// mouse was unclicked, reset variables in case the unclick happened outside
+	isButtonDown = false;
+	isAltButtonDown = false;
+}
+
 void Button::OnMouseClick(int x, int y, unsigned int button)
 {
 	if(!Enabled)
@@ -191,7 +197,7 @@ void Button::OnMouseHover(int x, int y)
 {
 	if(Enabled && toolTip.length()>0 && GetParentWindow())
 	{
-		GetParentWindow()->ToolTip(this, ui::Point(x, y), toolTip);
+		GetParentWindow()->ToolTip(Position, toolTip);
 	}
 }
 
@@ -219,15 +225,13 @@ void Button::DoAltAction()
 
 void Button::SetActionCallback(ButtonAction * action)
 {
-	if(actionCallback)
-		delete actionCallback;
+	delete actionCallback;
 	actionCallback = action;
 }
 
 Button::~Button()
 {
-	if(actionCallback)
-		delete actionCallback;
+	delete actionCallback;
 }
 
 } /* namespace ui */

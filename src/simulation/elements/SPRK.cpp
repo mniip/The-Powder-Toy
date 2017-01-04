@@ -8,7 +8,7 @@ Element_SPRK::Element_SPRK()
 	MenuVisible = 1;
 	MenuSection = SC_ELEC;
 	Enabled = 1;
-	
+
 	Advection = 0.0f;
 	AirDrag = 0.00f * CFDS;
 	AirLoss = 0.90f;
@@ -18,21 +18,20 @@ Element_SPRK::Element_SPRK()
 	Diffusion = 0.00f;
 	HotAir = 0.001f	* CFDS;
 	Falldown = 0;
-	
+
 	Flammable = 0;
 	Explosive = 0;
 	Meltable = 0;
 	Hardness = 1;
-	
+
 	Weight = 100;
-	
+
 	Temperature = R_TEMP+0.0f	+273.15f;
 	HeatConduct = 251;
 	Description = "Electricity. The basis of all electronics in TPT, travels along wires and other conductive elements.";
-	
-	State = ST_SOLID;
+
 	Properties = TYPE_SOLID|PROP_LIFE_DEC;
-	
+
 	LowPressure = IPL;
 	LowPressureTransition = NT;
 	HighPressure = IPH;
@@ -41,7 +40,7 @@ Element_SPRK::Element_SPRK()
 	LowTemperatureTransition = NT;
 	HighTemperature = ITH;
 	HighTemperatureTransition = NT;
-	
+
 	Update = &Element_SPRK::update;
 	Graphics = &Element_SPRK::graphics;
 }
@@ -58,7 +57,6 @@ int Element_SPRK::update(UPDATE_FUNC_ARGS)
 			parts[i].temp = R_TEMP + 273.15f;
 		if (ct<=0 || ct>=PT_NUM || !sim->elements[parts[i].ctype].Enabled)
 			ct = PT_METL;
-		sim->part_change_type(i,x,y,ct);
 		parts[i].ctype = PT_NONE;
 		parts[i].life = 4;
 		if (ct == PT_WATR)
@@ -67,6 +65,7 @@ int Element_SPRK::update(UPDATE_FUNC_ARGS)
 			parts[i].life = 54;
 		else if (ct == PT_SWCH)
 			parts[i].life = 14;
+		sim->part_change_type(i,x,y,ct);
 		return 0;
 	}
 	//Some functions of SPRK based on ctype (what it is on)
@@ -82,13 +81,13 @@ int Element_SPRK::update(UPDATE_FUNC_ARGS)
 	case PT_ETRD:
 		if (parts[i].life==1)
 		{
-			nearp = sim->nearest_part(i, PT_ETRD, -1);
+			nearp = Element_ETRD::nearestSparkablePart(sim, i);
 			if (nearp!=-1 && sim->parts_avg(i, nearp, PT_INSL)!=PT_INSL)
 			{
 				sim->CreateLine(x, y, (int)(parts[nearp].x+0.5f), (int)(parts[nearp].y+0.5f), PT_PLSM);
+				parts[i].life = 20;
 				sim->part_change_type(i,x,y,ct);
 				ct = parts[i].ctype = PT_NONE;
-				parts[i].life = 20;
 				sim->part_change_type(nearp,(int)(parts[nearp].x+0.5f),(int)(parts[nearp].y+0.5f),PT_SPRK);
 				parts[nearp].life = 9;
 				parts[nearp].ctype = PT_ETRD;
@@ -241,10 +240,20 @@ int Element_SPRK::update(UPDATE_FUNC_ARGS)
 							continue;
 					}
 					break;
+				case PT_EMP:
+					if (!parts[r>>8].life && parts[i].life > 0 && parts[i].life < 4)
+					{
+						sim->emp_trigger_count++;
+						sim->emp_decor += 3;
+						if (sim->emp_decor > 40)
+							sim->emp_decor = 40;
+						parts[r>>8].life = 220;
+					}
+					continue;
 				}
 
 				if (pavg == PT_INSL) continue; //Insulation blocks everything past here
-				if (!((sim->elements[receiver].Properties&PROP_CONDUCTS)||receiver==PT_INST||receiver==PT_QRTZ)) continue; //Stop non-conducting recievers, allow INST and QRTZ as special cases
+				if (!((sim->elements[receiver].Properties&PROP_CONDUCTS)||receiver==PT_INST||receiver==PT_QRTZ)) continue; //Stop non-conducting receivers, allow INST and QRTZ as special cases
 				if (abs(rx)+abs(ry)>=4 &&sender!=PT_SWCH&&receiver!=PT_SWCH) continue; //Only switch conducts really far
 				if (receiver==sender && receiver!=PT_INST && receiver!=PT_QRTZ) goto conduct; //Everything conducts to itself, except INST.
 
@@ -336,7 +345,7 @@ int Element_SPRK::update(UPDATE_FUNC_ARGS)
 					if (parts[r>>8].temp+10.0f<673.0f&&!sim->legacy_enable&&(receiver==PT_METL||receiver==PT_BMTL||receiver==PT_BRMT||receiver==PT_PSCN||receiver==PT_NSCN||receiver==PT_ETRD||receiver==PT_NBLE||receiver==PT_IRON))
 						parts[r>>8].temp = parts[r>>8].temp+10.0f;
 				}
-				else if (sender==PT_ETRD && parts[i].life==5) //ETRD is odd and conducts to others only at life 5, this could probably be somewhere else
+				else if (!parts[r>>8].life && sender==PT_ETRD && parts[i].life==5) //ETRD is odd and conducts to others only at life 5, this could probably be somewhere else
 				{
 					sim->part_change_type(i,x,y,sender);
 					parts[i].ctype = PT_NONE;

@@ -4,9 +4,8 @@
 #include <cmath>
 
 #include "Config.h"
-#include "Misc.h"
+#include "Platform.h"
 #include "gui/interface/Window.h"
-#include "gui/interface/Platform.h"
 #include "gui/interface/Engine.h"
 #include "graphics/Graphics.h"
 
@@ -17,6 +16,7 @@ Engine::Engine():
 	FpsLimit(60.0f),
 	Scale(1),
 	Fullscreen(false),
+	Depth3d(0),
 	FrameIndex(0),
 	lastBuffer(NULL),
 	prevBuffers(stack<pixel*>()),
@@ -39,16 +39,14 @@ Engine::Engine():
 
 Engine::~Engine()
 {
-	if(state_ != NULL)
-		delete state_;
+	delete state_;
 	//Dispose of any Windows.
 	while(!windows.empty())
 	{
 		delete windows.top();
 		windows.pop();
 	}
-	if (lastBuffer)
-		free(lastBuffer);
+	free(lastBuffer);
 }
 
 void Engine::Begin(int width, int height)
@@ -182,7 +180,7 @@ void Engine::Tick()
 		state_->DoTick(dt);
 
 
-	lastTick = gettime();
+	lastTick = Platform::GetTime();
 
 	/*if(statequeued_ != NULL)
 	{

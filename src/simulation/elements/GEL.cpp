@@ -8,7 +8,7 @@ Element_GEL::Element_GEL()
 	MenuVisible = 1;
 	MenuSection = SC_LIQUID;
 	Enabled = 1;
-	
+
 	Advection = 0.6f;
 	AirDrag = 0.01f * CFDS;
 	AirLoss = 0.98f;
@@ -18,21 +18,20 @@ Element_GEL::Element_GEL()
 	Diffusion = 0.00f;
 	HotAir = 0.000f  * CFDS;
 	Falldown = 2;
-	
+
 	Flammable = 0;
 	Explosive = 0;
 	Meltable = 0;
 	Hardness = 20;
-	
+
 	Weight = 35;
-	
+
 	Temperature = R_TEMP-2.0f  +273.15f;
 	HeatConduct = 29;
 	Description = "Gel. A liquid with variable viscosity and heat conductivity.";
-	
-	State = ST_LIQUID;
+
 	Properties = TYPE_LIQUID|PROP_LIFE_DEC|PROP_NEUTPENETRATE;
-	
+
 	LowPressure = IPL;
 	LowPressureTransition = NT;
 	HighPressure = IPH;
@@ -41,14 +40,14 @@ Element_GEL::Element_GEL()
 	LowTemperatureTransition = NT;
 	HighTemperature = ITH;
 	HighTemperatureTransition = NT;
-	
+
 	Update = &Element_GEL::update;
 	Graphics = &Element_GEL::graphics;
 }
 
 //#TPT-Directive ElementHeader Element_GEL static int update(UPDATE_FUNC_ARGS)
 int Element_GEL::update(UPDATE_FUNC_ARGS)
- {
+{
 	int r, rx, ry, rt;
 	bool gel;
 	int absorbChanceDenom;
@@ -101,13 +100,16 @@ int Element_GEL::update(UPDATE_FUNC_ARGS)
 					}
 					break;
 				case PT_SPNG:
-					if (parts[i].tmp<100 && ((parts[r>>8].life+1)>parts[i].tmp))
+					// Concentration diffusion
+					if (parts[r>>8].life>0 && parts[i].tmp<100 && ((parts[r>>8].life+1)>parts[i].tmp))
 					{
+						// SPNG -> GEL
 						parts[r>>8].life--;
 						parts[i].tmp++;
 					}
-					else if ((parts[r>>8].life+1)<parts[i].tmp)//Concentration diffusion
+					else if (parts[i].tmp>0 && (parts[r>>8].life+1)<parts[i].tmp)
 					{
+						// SPNG <- GEL (saturation limit of SPNG is ignored here)
 						parts[r>>8].life++;
 						parts[i].tmp--;
 					}
@@ -133,7 +135,7 @@ int Element_GEL::update(UPDATE_FUNC_ARGS)
 					float per, nd;
 					nd = dx*dx + dy*dy - 0.5;
 					per = 5*(1 - parts[i].tmp/100)*(nd/(dx*dx + dy*dy + nd) - 0.5);
-					if (sim->elements[rt].State==ST_LIQUID)
+					if (sim->elements[rt].Properties&TYPE_LIQUID)
 						per *= 0.1;
 					dx *= per; dy *= per;
 					parts[i].vx += dx;

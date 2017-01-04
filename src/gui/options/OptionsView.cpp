@@ -1,12 +1,14 @@
-#include <stdio.h>
+#include <cstdio>
 #ifdef WIN
-	#include <direct.h>
-	#define getcwd _getcwd
+#include <direct.h>
+#define getcwd _getcwd
 #else
-	#include <unistd.h>
+#include <unistd.h>
 #endif
+#include "SDLCompat.h"
 
 #include "OptionsView.h"
+#include "Format.h"
 #include "gui/Style.h"
 #include "gui/interface/Button.h"
 #include "gui/interface/Label.h"
@@ -14,7 +16,7 @@
 #include "gui/dialogues/ErrorMessage.h"
 
 OptionsView::OptionsView():
-	ui::Window(ui::Point(-1, -1), ui::Point(300, 330)){
+	ui::Window(ui::Point(-1, -1), ui::Point(300, 348)){
 
 	ui::Label * tempLabel = new ui::Label(ui::Point(4, 5), ui::Point(Size.X-8, 14), "Simulation Options");
 	tempLabel->SetTextColour(style::Colour::InformationTitle);
@@ -96,19 +98,19 @@ OptionsView::OptionsView():
 	airMode->AddOption(std::pair<std::string, int>("Off", 3));
 	airMode->AddOption(std::pair<std::string, int>("No Update", 4));
 	airMode->SetActionCallback(new AirModeChanged(this));
-		
+
 	tempLabel = new ui::Label(ui::Point(8, 146), ui::Point(Size.X-96, 16), "Air Simulation Mode");
 	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(tempLabel);
-		
+
 	class GravityModeChanged: public ui::DropDownAction
 	{
 		OptionsView * v;
 	public:
 		GravityModeChanged(OptionsView * v): v(v) { }
 		virtual void OptionChanged(ui::DropDown * sender, std::pair<std::string, int> option) { v->c->SetGravityMode(option.second); }
-	};	
-		
+	};
+
 	gravityMode = new ui::DropDown(ui::Point(Size.X-88, 166), ui::Point(80, 16));
 	AddComponent(gravityMode);
 	gravityMode->AddOption(std::pair<std::string, int>("Vertical", 0));
@@ -126,7 +128,7 @@ OptionsView::OptionsView():
 	public:
 		EdgeModeChanged(OptionsView * v): v(v) { }
 		virtual void OptionChanged(ui::DropDown * sender, std::pair<std::string, int> option) { v->c->SetEdgeMode(option.second); }
-	};	
+	};
 
 	edgeMode = new ui::DropDown(ui::Point(Size.X-88, 186), ui::Point(80, 16));
 	AddComponent(edgeMode);
@@ -149,7 +151,7 @@ OptionsView::OptionsView():
 
 	scale = new ui::Checkbox(ui::Point(8, 210), ui::Point(Size.X-6, 16), "Large screen", "");
 	scale->SetActionCallback(new ScaleAction(this));
-	tempLabel = new ui::Label(ui::Point(scale->Position.X+Graphics::textwidth(scale->GetText().c_str())+20, scale->Position.Y), ui::Point(Size.X-28, 16), "\bg- Double window size for smaller screens");
+	tempLabel = new ui::Label(ui::Point(scale->Position.X+Graphics::textwidth(scale->GetText().c_str())+20, scale->Position.Y), ui::Point(Size.X-28, 16), "\bg- Double window size for larger screens");
 	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(tempLabel);
 	AddComponent(scale);
@@ -162,10 +164,12 @@ OptionsView::OptionsView():
 		FullscreenAction(OptionsView * v_){	v = v_;	}
 		virtual void ActionCallback(ui::Checkbox * sender)
 		{
-#ifdef MACOSX
-			ErrorMessage::Blocking("Error", "fullscreen doesn't work on OS X");
+#ifdef USE_SDL
+#if defined(MACOSX) && !SDL_VERSION_ATLEAST(1, 2, 15)
+			ErrorMessage::Blocking("Information", "Fullscreen doesn't work on OS X");
 #else
 			v->c->SetFullscreen(sender->GetChecked());
+#endif
 #endif
 		}
 	};
@@ -207,6 +211,22 @@ OptionsView::OptionsView():
 	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(tempLabel);
 	AddComponent(showAvatars);
+
+	class DepthAction: public ui::TextboxAction
+	{
+		OptionsView * v;
+	public:
+		DepthAction(OptionsView * v_) { v = v_; }
+		virtual void TextChangedCallback(ui::Textbox * sender) { v->c->Set3dDepth(format::StringToNumber<int>(sender->GetText())); }
+	};
+	depthTextbox = new ui::Textbox(ui::Point(8, Size.Y-58), ui::Point(25, 16), format::NumberToString<int>(ui::Engine::Ref().Get3dDepth()));
+	depthTextbox->SetInputType(ui::Textbox::Numeric);
+	depthTextbox->SetActionCallback(new DepthAction(this));
+	AddComponent(depthTextbox);
+
+	tempLabel = new ui::Label(ui::Point(depthTextbox->Position.X+depthTextbox->Size.X+3, depthTextbox->Position.Y), ui::Point(Size.X-28, 16), "\bg- Change the depth of the 3D anaglyph effect");
+	tempLabel->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;	tempLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	AddComponent(tempLabel);
 
 	class DataFolderAction: public ui::ButtonAction
 	{
@@ -291,4 +311,3 @@ void OptionsView::OnTryExit(ExitMethod method)
 
 OptionsView::~OptionsView() {
 }
-

@@ -295,6 +295,11 @@ void RenderView::OnMouseDown(int x, int y, unsigned button)
 		c->Exit();
 }
 
+void RenderView::OnTryExit(ExitMethod method)
+{
+	c->Exit();
+}
+
 void RenderView::NotifyRendererChanged(RenderModel * sender)
 {
 	ren = sender->GetRenderer();
@@ -410,7 +415,7 @@ void RenderView::OnKeyPress(int key, Uint16 character, bool shift, bool ctrl, bo
 	}
 }
 
-void RenderView::ToolTip(ui::Component * sender, ui::Point mousePosition, std::string toolTip)
+void RenderView::ToolTip(ui::Point senderPosition, std::string toolTip)
 {
 	this->toolTip = toolTip;
 	this->isToolTipFadingIn = true;

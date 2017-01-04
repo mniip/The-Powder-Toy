@@ -8,7 +8,7 @@ Element_FIRE::Element_FIRE()
 	MenuVisible = 1;
 	MenuSection = SC_EXPLOSIVE;
 	Enabled = 1;
-	
+
 	Advection = 0.9f;
 	AirDrag = 0.04f * CFDS;
 	AirLoss = 0.97f;
@@ -18,21 +18,20 @@ Element_FIRE::Element_FIRE()
 	Diffusion = 0.00f;
 	HotAir = 0.001f  * CFDS;
 	Falldown = 1;
-	
+
 	Flammable = 0;
 	Explosive = 0;
 	Meltable = 0;
 	Hardness = 1;
-	
+
 	Weight = 2;
-	
+
 	Temperature = R_TEMP+400.0f+273.15f;
 	HeatConduct = 88;
 	Description = "Ignites flammable materials. Heats air.";
-	
-	State = ST_GAS;
+
 	Properties = TYPE_GAS|PROP_LIFE_DEC|PROP_LIFE_KILL;
-	
+
 	LowPressure = IPL;
 	LowPressureTransition = NT;
 	HighPressure = IPH;
@@ -41,14 +40,14 @@ Element_FIRE::Element_FIRE()
 	LowTemperatureTransition = NT;
 	HighTemperature = 2773.0f;
 	HighTemperatureTransition = PT_PLSM;
-	
+
 	Update = &Element_FIRE::update;
 	Graphics = &Element_FIRE::graphics;
 }
 
 //#TPT-Directive ElementHeader Element_FIRE static int update(UPDATE_FUNC_ARGS)
 int Element_FIRE::update(UPDATE_FUNC_ARGS)
- {
+{
 	int r, rx, ry, rt, t = parts[i].type;
 	switch (t)
 	{
@@ -92,8 +91,6 @@ int Element_FIRE::update(UPDATE_FUNC_ARGS)
 				r = pmap[y+ry][x+rx];
 				if (!r)
 					continue;
-				if (sim->bmap[(y+ry)/CELL][(x+rx)/CELL] && sim->bmap[(y+ry)/CELL][(x+rx)/CELL]!=WL_STREAM)
-					continue;
 				rt = r&0xFF;
 				
 				//THRM burning
@@ -128,6 +125,17 @@ int Element_FIRE::update(UPDATE_FUNC_ARGS)
 							parts[i].ctype = PT_METL;
 							sim->kill_part(r>>8);
 						}
+					}
+				}
+
+				// LAVA(CLST) + LAVA(PQRT) + high enough temp = LAVA(CRMC) + LAVA(CRMC)
+				if (t == PT_LAVA && parts[i].ctype == PT_QRTZ && rt == PT_LAVA && parts[r>>8].ctype == PT_CLST)
+				{
+					float pres = std::max(sim->pv[y/CELL][x/CELL]*10.0f, 0.0f);
+					if (parts[i].temp >= pres+sim->elements[PT_CRMC].HighTemperature+50.0f)
+					{
+						parts[i].ctype = PT_CRMC;
+						parts[r>>8].ctype = PT_CRMC;
 					}
 				}
 
@@ -229,12 +237,12 @@ int Element_FIRE::graphics(GRAPHICS_FUNC_ARGS)
 	*colr = (unsigned char)ren->flm_data[caddress];
 	*colg = (unsigned char)ren->flm_data[caddress+1];
 	*colb = (unsigned char)ren->flm_data[caddress+2];
-	
+
 	*firea = 255;
 	*firer = *colr;
 	*fireg = *colg;
 	*fireb = *colb;
-	
+
 	*pixel_mode = PMODE_NONE; //Clear default, don't draw pixel
 	*pixel_mode |= FIRE_ADD;
 	//Returning 0 means dynamic, do not cache

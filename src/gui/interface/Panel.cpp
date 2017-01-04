@@ -1,5 +1,4 @@
 #include <vector>
-//#include "Platform.h"
 
 #include "gui/interface/Panel.h"
 
@@ -46,8 +45,7 @@ Panel::~Panel()
 {
 	for(unsigned i = 0; i < children.size(); ++i)
 	{
-		if( children[i] )
-			delete children[i];
+		delete children[i];
 	}
 #ifdef OGLI
 	glDeleteTextures(1, &myVidTex);
@@ -194,8 +192,8 @@ void Panel::OnMouseClick(int localx, int localy, unsigned button)
 	//check if clicked a child
 	for(int i = children.size()-1; i >= 0 ; --i)
 	{
-		//child must be unlocked
-		if(!children[i]->Locked)
+		//child must be enabled
+		if(children[i]->Enabled)
 		{
 			//is mouse inside?
 			if( localx >= children[i]->Position.X + ViewportPosition.X &&
@@ -224,7 +222,7 @@ void Panel::OnMouseDown(int x, int y, unsigned button)
 	XOnMouseDown(x, y, button);
 	for (size_t i = 0; i < children.size(); ++i)
 	{
-		if(!children[i]->Locked)
+		if(children[i]->Enabled)
 			children[i]->OnMouseDown(x, y, button);
 	}
 }
@@ -234,7 +232,7 @@ void Panel::OnMouseHover(int localx, int localy)
 	// check if hovering on children
 	for (int i = children.size() - 1; i >= 0; --i)
 	{
-		if (!children[i]->Locked)
+		if (children[i]->Enabled)
 		{
 			if( localx >= children[i]->Position.X &&
 				localy >= children[i]->Position.Y &&
@@ -256,7 +254,7 @@ void Panel::OnMouseMoved(int localx, int localy, int dx, int dy)
 	XOnMouseMoved(localx, localy, dx, dy);
 	for (size_t i = 0; i < children.size(); ++i)
 	{
-		if(!children[i]->Locked)
+		if(children[i]->Enabled)
 			children[i]->OnMouseMoved(localx - children[i]->Position.X - ViewportPosition.X, localy - children[i]->Position.Y - ViewportPosition.Y, dx, dy);
 	}
 }
@@ -266,7 +264,7 @@ void Panel::OnMouseMovedInside(int localx, int localy, int dx, int dy)
 	mouseInside = true;
 	for (size_t i = 0; i < children.size(); ++i)
 	{
-		if (!children[i]->Locked)
+		if (children[i]->Enabled)
 		{
 			Point local	(localx - children[i]->Position.X - ViewportPosition.X, localy - children[i]->Position.Y - ViewportPosition.Y)
 			, prevlocal (local.X - dx, local.Y - dy);
@@ -328,7 +326,7 @@ void Panel::OnMouseUnclick(int localx, int localy, unsigned button)
 	for(int i = children.size()-1; i >= 0 ; --i)
 	{
 		//child must be unlocked
-		if(!children[i]->Locked)
+		if(children[i]->Enabled)
 		{
 			//is mouse inside?
 			if( localx >= children[i]->Position.X + ViewportPosition.X &&
@@ -355,7 +353,7 @@ void Panel::OnMouseUp(int x, int y, unsigned button)
 	XOnMouseUp(x, y, button);
 	for (size_t i = 0; i < children.size(); ++i)
 	{
-		if (!children[i]->Locked)
+		if (children[i]->Enabled)
 			children[i]->OnMouseUp(x, y, button);
 	}
 }
@@ -365,7 +363,7 @@ void Panel::OnMouseWheel(int localx, int localy, int d)
 	XOnMouseWheel(localx, localy, d);
 	for (size_t i = 0; i < children.size(); ++i)
 	{
-		if (!children[i]->Locked)
+		if (children[i]->Enabled)
 			children[i]->OnMouseWheel(localx - children[i]->Position.X - ViewportPosition.X, localy - children[i]->Position.Y - ViewportPosition.Y, d);
 	}
 }
@@ -377,7 +375,7 @@ void Panel::OnMouseWheelInside(int localx, int localy, int d)
 	for (int i = children.size()-1; i >= 0 ; --i)
 	{
 		//child must be unlocked
-		if (!children[i]->Locked)
+		if (children[i]->Enabled)
 		{
 			//is mouse inside?
 			if (localx >= children[i]->Position.X + ViewportPosition.X &&

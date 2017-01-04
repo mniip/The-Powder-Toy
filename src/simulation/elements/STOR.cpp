@@ -8,7 +8,7 @@ Element_STOR::Element_STOR()
 	MenuVisible = 1;
 	MenuSection = SC_POWERED;
 	Enabled = 1;
-	
+
 	Advection = 0.0f;
 	AirDrag = 0.00f * CFDS;
 	AirLoss = 0.90f;
@@ -18,21 +18,20 @@ Element_STOR::Element_STOR()
 	Diffusion = 0.00f;
 	HotAir = 0.000f	* CFDS;
 	Falldown = 0;
-	
+
 	Flammable = 0;
 	Explosive = 0;
 	Meltable = 0;
 	Hardness = 1;
-	
+
 	Weight = 100;
-	
+
 	Temperature = R_TEMP+0.0f	+273.15f;
 	HeatConduct = 0;
-	Description = "Captures and stores a single particle. releases when charged with PSCN, also passes to PIPE.";
-	
-	State = ST_NONE;
+	Description = "Storage. Captures and stores a single particle. Releases when charged with PSCN, also passes to PIPE.";
+
 	Properties = TYPE_SOLID|PROP_NOCTYPEDRAW;
-	
+
 	LowPressure = IPL;
 	LowPressureTransition = NT;
 	HighPressure = IPH;
@@ -41,15 +40,17 @@ Element_STOR::Element_STOR()
 	LowTemperatureTransition = NT;
 	HighTemperature = ITH;
 	HighTemperatureTransition = NT;
-	
+
 	Update = &Element_STOR::update;
 	Graphics = &Element_STOR::graphics;
 }
 
 //#TPT-Directive ElementHeader Element_STOR static int update(UPDATE_FUNC_ARGS)
 int Element_STOR::update(UPDATE_FUNC_ARGS)
- {
+{
 	int r, rx, ry, np, rx1, ry1;
+	if (!sim->IsValidElement(parts[i].tmp))
+		parts[i].tmp = 0;
 	if(parts[i].life && !parts[i].tmp)
 		parts[i].life--;
 	for (rx=-2; rx<3; rx++)
@@ -74,7 +75,7 @@ int Element_STOR::update(UPDATE_FUNC_ARGS)
 				{
 					for(ry1 = 1; ry1 >= -1; ry1--){
 						for(rx1 = 0; rx1 >= -1 && rx1 <= 1; rx1 = -rx1-rx1+1){ // Oscillate the X starting at 0, 1, -1, 3, -5, etc (Though stop at -1)
-							np = sim->create_part(-1,x+rx1,y+ry1,parts[i].tmp);
+							np = sim->create_part(-1,x+rx1,y+ry1,parts[i].tmp&0xFF);
 							if (np!=-1)
 							{
 								parts[np].temp = parts[i].temp;

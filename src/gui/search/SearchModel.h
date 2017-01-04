@@ -3,8 +3,7 @@
 
 #include <vector>
 #include <string>
-#include <pthread.h>
-#undef GetUserName //God dammit microsoft!
+#include "common/tpt-thread.h"
 #include <cmath>
 #include "client/SaveInfo.h"
 #include "SearchView.h"
@@ -57,7 +56,7 @@ public:
     void SetShowTags(bool show);
     bool GetShowTags();
 	void AddObserver(SearchView * observer);
-	void UpdateSaveList(int pageNumber, std::string query);
+	bool UpdateSaveList(int pageNumber, std::string query);
 	vector<SaveInfo*> GetSaveList();
 	vector<pair<string, int> > GetTagList();
 	string GetLastError() { return lastError; }

@@ -2,12 +2,12 @@
 #include <iostream>
 #include <typeinfo>
 #include <sstream>
-#include <time.h>
+#include <ctime>
 #include "RequestBroker.h"
 #include "RequestListener.h"
 #include "ThumbRenderRequest.h"
 #include "ImageRequest.h"
-#include "Misc.h"
+#include "Platform.h"
 #include "client/Client.h"
 #include "client/GameSave.h"
 #include "graphics/Graphics.h"
@@ -210,6 +210,8 @@ void RequestBroker::thumbnailQueueProcessTH()
 				resultStatus = r->Process(*this);
 				if(resultStatus == Duplicate || resultStatus == Failed || resultStatus == Finished)
 				{
+					if ((resultStatus == Duplicate || resultStatus == Failed) && CheckRequestListener(r->Listener))
+						r->Listener.second->OnResponseFailed(r->Identifier);
 					req = activeRequests.erase(req);
 				}
 				else
@@ -236,7 +238,7 @@ void RequestBroker::thumbnailQueueProcessTH()
 			}
 		}
 		pthread_mutex_unlock(&requestQueueMutex);
-		millisleep(1);
+		Platform::Millisleep(1);
 	}
 	pthread_mutex_lock(&runningMutex);
 	thumbnailQueueRunning = false;

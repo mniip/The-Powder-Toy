@@ -8,7 +8,7 @@ Element_BCLN::Element_BCLN()
 	MenuVisible = 1;
 	MenuSection = SC_SPECIAL;
 	Enabled = 1;
-	
+
 	Advection = 0.0f;
 	AirDrag = 0.00f * CFDS;
 	AirLoss = 0.97f;
@@ -18,21 +18,20 @@ Element_BCLN::Element_BCLN()
 	Diffusion = 0.00f;
 	HotAir = 0.000f	* CFDS;
 	Falldown = 0;
-	
+
 	Flammable = 0;
 	Explosive = 0;
 	Meltable = 0;
 	Hardness = 12;
-	
+
 	Weight = 100;
-	
+
 	Temperature = R_TEMP+0.0f	+273.15f;
 	HeatConduct = 251;
 	Description = "Breakable Clone.";
-	
-	State = ST_NONE;
+
 	Properties = TYPE_SOLID|PROP_LIFE_DEC|PROP_LIFE_KILL_DEC|PROP_DRAWONCTYPE|PROP_NOCTYPEDRAW;
-	
+
 	LowPressure = IPL;
 	LowPressureTransition = NT;
 	HighPressure = IPH;
@@ -41,21 +40,21 @@ Element_BCLN::Element_BCLN()
 	LowTemperatureTransition = NT;
 	HighTemperature = ITH;
 	HighTemperatureTransition = NT;
-	
+
 	Update = &Element_BCLN::update;
-	
 }
+
+#define ADVECTION 0.1f
 
 //#TPT-Directive ElementHeader Element_BCLN static int update(UPDATE_FUNC_ARGS)
 int Element_BCLN::update(UPDATE_FUNC_ARGS)
- {
+{
 	if (!parts[i].life && sim->pv[y/CELL][x/CELL]>4.0f)
 		parts[i].life = rand()%40+80;
 	if (parts[i].life)
 	{
-		float advection = 0.1f;
-		parts[i].vx += advection*sim->vx[y/CELL][x/CELL];
-		parts[i].vy += advection*sim->vy[y/CELL][x/CELL];
+		parts[i].vx += ADVECTION*sim->vx[y/CELL][x/CELL];
+		parts[i].vy += ADVECTION*sim->vy[y/CELL][x/CELL];
 	}
 	if (parts[i].ctype<=0 || parts[i].ctype>=PT_NUM || !sim->elements[parts[i].ctype].Enabled || (parts[i].ctype==PT_LIFE && (parts[i].tmp<0 || parts[i].tmp>=NGOL)))
 	{
@@ -82,10 +81,10 @@ int Element_BCLN::update(UPDATE_FUNC_ARGS)
 				}
 	}
 	else {
-		if (parts[i].ctype==PT_LIFE) sim->create_part(-1, x+rand()%3-1, y+rand()%3-1, parts[i].ctype|(parts[i].tmp<<8));
+		if (parts[i].ctype==PT_LIFE) sim->create_part(-1, x+rand()%3-1, y+rand()%3-1, PT_LIFE, parts[i].tmp);
 		else if (parts[i].ctype!=PT_LIGH || (rand()%30)==0)
 		{
-			int np = sim->create_part(-1, x+rand()%3-1, y+rand()%3-1, parts[i].ctype);
+			int np = sim->create_part(-1, x+rand()%3-1, y+rand()%3-1, parts[i].ctype&0xFF);
 			if (np>=0)
 			{
 				if (parts[i].ctype==PT_LAVA && parts[i].tmp>0 && parts[i].tmp<PT_NUM && sim->elements[parts[i].tmp].HighTemperatureTransition==PT_LAVA)

@@ -8,7 +8,7 @@ Element_AMTR::Element_AMTR()
 	MenuVisible = 1;
 	MenuSection = SC_NUCLEAR;
 	Enabled = 1;
-	
+
 	Advection = 0.7f;
 	AirDrag = 0.02f * CFDS;
 	AirLoss = 0.96f;
@@ -18,21 +18,20 @@ Element_AMTR::Element_AMTR()
 	Diffusion = 1.00f;
 	HotAir = 0.0000f * CFDS;
 	Falldown = 0;
-	
+
 	Flammable = 0;
 	Explosive = 0;
 	Meltable = 0;
 	Hardness = 0;
-	
+
 	Weight = 100;
-	
+
 	Temperature = R_TEMP+0.0f +273.15f;
 	HeatConduct = 70;
 	Description = "Anti-Matter, destroys a majority of particles.";
-	
-	State = ST_NONE;
-	Properties = TYPE_PART;
-	
+
+	Properties = TYPE_GAS;
+
 	LowPressure = IPL;
 	LowPressureTransition = NT;
 	HighPressure = IPH;
@@ -41,15 +40,15 @@ Element_AMTR::Element_AMTR()
 	LowTemperatureTransition = NT;
 	HighTemperature = ITH;
 	HighTemperatureTransition = NT;
-	
+
 	Update = &Element_AMTR::update;
-	
+	Graphics = &Element_AMTR::graphics;
 }
 
 //#TPT-Directive ElementHeader Element_AMTR static int update(UPDATE_FUNC_ARGS)
 int Element_AMTR::update(UPDATE_FUNC_ARGS)
- {
-	 int r, rx, ry, rt;
+{
+	int r, rx, ry, rt;
 	for (rx=-1; rx<2; rx++)
 		for (ry=-1; ry<2; ry++)
 			if (BOUNDS_CHECK && (rx || ry))
@@ -76,5 +75,13 @@ int Element_AMTR::update(UPDATE_FUNC_ARGS)
 	return 0;
 }
 
+
+//#TPT-Directive ElementHeader Element_AMTR static int graphics(GRAPHICS_FUNC_ARGS)
+int Element_AMTR::graphics(GRAPHICS_FUNC_ARGS)
+{
+	// don't render AMTR as a gas
+	// this function just overrides the default graphics
+	return 1;
+}
 
 Element_AMTR::~Element_AMTR() {}

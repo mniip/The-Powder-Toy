@@ -21,11 +21,10 @@ public:
 	int GetParticleType(std::string type);
 	void Log(LogType type, std::string message);
 	//void AttachGameModel(GameModel * m);
-	virtual bool OnBrushChanged(int brushType, int rx, int ry) {return true;}
 	virtual bool OnActiveToolChanged(int toolSelection, Tool * tool) {return true;}
 	virtual bool OnMouseMove(int x, int y, int dx, int dy) {return true;}
 	virtual bool OnMouseDown(int x, int y, unsigned button) {return true;}
-	virtual bool OnMouseUp(int x, int y, unsigned button) {return true;}
+	virtual bool OnMouseUp(int x, int y, unsigned button, char type) {return true;}
 	virtual bool OnMouseWheel(int x, int y, int d) {return true;}
 	virtual bool OnKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool alt) {return true;}
 	virtual bool OnKeyRelease(int key, Uint16 character, bool shift, bool ctrl, bool alt) {return true;}

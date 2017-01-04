@@ -6,17 +6,17 @@
 //
 // Feb. 1996: Creation, losely based on a heavily bugfixed version of Schumacher's resampler in Graphics Gems 3.
 // Oct. 2000: Ported to C++, tweaks.
-// May 2001: Continous to discrete mapping, box filter tweaks.
+// May 2001: Continuous to discrete mapping, box filter tweaks.
 // March 9, 2002: Kaiser filter grabbed from Jonathan Blow's GD magazine mipmap sample code.
 // Sept. 8, 2002: Comments cleaned up a bit.
 // Dec. 31, 2008: v2.2: Bit more cleanup, released as public domain.
 // June 4, 2012: v2.21: Switched to unlicense.org, integrated GCC fixes supplied by Peter Nagy <petern@crytek.com>, Anteru at anteru.net, and clay@coge.net, 
 // added Codeblocks project (for testing with MinGW and GCC), VS2008 static code analysis pass.
-#include <stdlib.h>
-#include <math.h>
-#include <float.h>
-#include <assert.h>
-#include <string.h>
+#include <cstdlib>
+#include <cmath>
+#include <cfloat>
+#include <cassert>
+#include <cstring>
 #include "resampler.h"
 
 #define resampler_assert assert

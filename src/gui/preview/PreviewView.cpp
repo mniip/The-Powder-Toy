@@ -15,6 +15,7 @@
 #include "gui/interface/ScrollPanel.h"
 #include "gui/interface/AvatarButton.h"
 #include "gui/interface/Keys.h"
+#include "gui/dialogues/ErrorMessage.h"
 
 class PreviewView::LoginAction: public ui::ButtonAction
 {
@@ -68,6 +69,8 @@ PreviewView::PreviewView():
 	submitCommentButton(NULL),
 	addCommentBox(NULL),
 	doOpen(false),
+	doError(false),
+	doErrorMessage(""),
 	showAvatars(true),
 	prevPage(false),
 	commentBoxHeight(20)
@@ -110,7 +113,7 @@ PreviewView::PreviewView():
 		ReportAction(PreviewView * v_){ v = v_; }
 		virtual void ActionCallback(ui::Button * sender)
 		{
-			new TextPrompt("Report Save", "Things to consider when reporting:\n\bw1)\bg When reporting stolen saves, please include the ID of the original save.\n\bw2)\bg Do not waste staff time with fake or bogus reports, doing so may result in a ban.", "", "[reason]", true, new ReportPromptCallback(v));
+			new TextPrompt("Report Save", "Things to consider when reporting:\n\bw1)\bg When reporting stolen saves, please include the ID of the original save.\n\bw2)\bg Do not ask for saves to be removed from front page unless they break the rules.\n\bw3)\bg You may report saves for comments or tags too (including your own saves)", "", "[reason]", true, new ReportPromptCallback(v));
 		}
 	};
 	reportButton = new ui::Button(ui::Point(100, Size.Y-19), ui::Point(51, 19), "Report");
@@ -190,7 +193,7 @@ PreviewView::PreviewView():
 	viewsLabel->Appearance.HorizontalAlign = ui::Appearance::AlignRight;
 	viewsLabel->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
 	AddComponent(viewsLabel);
-	
+
 	pageInfo = new ui::Label(ui::Point((XRES/2) + 85, Size.Y+1), ui::Point(70, 16), "Page 1 of 1");
 	pageInfo->Appearance.HorizontalAlign = ui::Appearance::AlignCentre;
 	AddComponent(pageInfo);
@@ -212,7 +215,7 @@ void PreviewView::AttachController(PreviewController * controller)
 	textWidth = Graphics::textwidth(format::NumberToString<int>(c->SaveID()).c_str());
 	saveIDLabel2 = new ui::Label(ui::Point((Size.X-textWidth-20)/2-37, Size.Y+22), ui::Point(40, 16), "Save ID:");
 	AddComponent(saveIDLabel2);
-	
+
 	saveIDButton = new ui::CopyTextButton(ui::Point((Size.X-textWidth-10)/2, Size.Y+20), ui::Point(textWidth+10, 18), format::NumberToString<int>(c->SaveID()), saveIDLabel);
 	AddComponent(saveIDButton);
 }
@@ -228,7 +231,7 @@ void PreviewView::commentBoxAutoHeight()
 
 		int oldSize = addCommentBox->Size.Y;
 		addCommentBox->AutoHeight();
-		int newSize = addCommentBox->Size.Y+5;
+		int newSize = addCommentBox->Size.Y+2;
 		addCommentBox->Size.Y = oldSize;
 
 		commentBoxHeight = newSize+22;
@@ -245,7 +248,7 @@ void PreviewView::commentBoxAutoHeight()
 		commentBoxPositionX = (XRES/2)+4;
 		commentBoxPositionY = Size.Y-19;
 		commentBoxSizeX = Size.X-(XRES/2)-48;
-		commentBoxSizeY = 17;
+		commentBoxSizeY = 16;
 	}
 	commentsPanel->Size.Y = Size.Y-commentBoxHeight;
 }
@@ -365,6 +368,11 @@ void PreviewView::OnTick(float dt)
 	}
 
 	c->Update();
+	if (doError)
+	{
+		ErrorMessage::Blocking("Error loading save", doErrorMessage);
+		c->Exit();
+	}
 }
 
 void PreviewView::OnTryExit(ExitMethod method)
@@ -401,15 +409,14 @@ void PreviewView::OnMouseUp(int x, int y, unsigned int button)
 
 void PreviewView::OnKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool alt)
 {
-	if ((key == KEY_ENTER || key == KEY_RETURN) && (!addCommentBox || !addCommentBox->IsFocused()))
+	if ((key == SDLK_KP_ENTER || key == SDLK_RETURN) && (!addCommentBox || !addCommentBox->IsFocused()))
 		openButton->DoAction();
 }
 
 void PreviewView::NotifySaveChanged(PreviewModel * sender)
 {
-	SaveInfo * save = sender->GetSave();
-	if(savePreview)
-		delete savePreview;
+	SaveInfo * save = sender->GetSaveInfo();
+	delete savePreview;
 	savePreview = NULL;
 	if(save)
 	{
@@ -458,6 +465,8 @@ void PreviewView::NotifySaveChanged(PreviewModel * sender)
 				savePreview->Height *= scaleFactor;
 			}
 		}
+		else if (!sender->GetCanOpen())
+			openButton->Enabled = false;
 	}
 	else
 	{
@@ -467,6 +476,8 @@ void PreviewView::NotifySaveChanged(PreviewModel * sender)
 		authorDateLabel->SetText("");
 		saveDescriptionLabel->SetText("");
 		favButton->Enabled = false;
+		if (!sender->GetCanOpen())
+			openButton->Enabled = false;
 	}
 }
 
@@ -529,6 +540,12 @@ void PreviewView::NotifyCommentBoxEnabledChanged(PreviewModel * sender)
 	}
 }
 
+void PreviewView::SaveLoadingError(std::string errorMessage)
+{
+	doError = true;
+	doErrorMessage = errorMessage;
+}
+
 void PreviewView::NotifyCommentsPageChanged(PreviewModel * sender)
 {
 	std::stringstream pageInfoStream;
@@ -581,7 +598,7 @@ void PreviewView::NotifyCommentsChanged(PreviewModel * sender)
 			tempUsername->Appearance.VerticalAlign = ui::Appearance::AlignBottom;
 			if (Client::Ref().GetAuthUser().ID && Client::Ref().GetAuthUser().Username == comments->at(i)->authorName)
 				tempUsername->SetTextColour(ui::Colour(255, 255, 100));
-			else if (sender->GetSave() && sender->GetSave()->GetUserName() == comments->at(i)->authorName)
+			else if (sender->GetSaveInfo() && sender->GetSaveInfo()->GetUserName() == comments->at(i)->authorName)
 				tempUsername->SetTextColour(ui::Colour(255, 100, 100));
 			currentY += 16;
 
@@ -610,6 +627,8 @@ void PreviewView::NotifyCommentsChanged(PreviewModel * sender)
 			commentsPanel->SetScrollPosition(currentY);
 		}
 	}
+	//else if (sender->GetCommentsLoaded())
+	//	ErrorMessage::Blocking("Error loading comments", Client::Ref().GetLastError());
 }
 
 PreviewView::~PreviewView()
@@ -624,7 +643,5 @@ PreviewView::~PreviewView()
 		RemoveComponent(submitCommentButton);
 		delete submitCommentButton;
 	}
-	if(savePreview)
-		delete savePreview;
+	delete savePreview;
 }
-

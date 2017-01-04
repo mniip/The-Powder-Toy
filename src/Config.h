@@ -12,25 +12,39 @@
 
 //VersionInfoStart
 #ifndef SAVE_VERSION
-#define SAVE_VERSION 90
+#define SAVE_VERSION 91
 #endif
 
 #ifndef MINOR_VERSION
-#define MINOR_VERSION 2
+#define MINOR_VERSION 5
 #endif
 
 #ifndef BUILD_NUM
-#define BUILD_NUM 322
+#define BUILD_NUM 330
 #endif
 
 #ifndef SNAPSHOT_ID
 #define SNAPSHOT_ID 0
 #endif
+
+// Mod ID, used on the http://starcatcher.us/TPT build server
+// The build server will compile for all platforms for you, and send updates in game
+// See jacob1 to get a mod ID
+#ifndef MOD_ID
+#define MOD_ID 0
+#endif
+
+#ifdef SNAPSHOT
+#define FUTURE_SAVE_VERSION 92
+#define FUTURE_MINOR_VERSION 0
+#endif
 //VersionInfoEnd
 
 //#define IGNORE_UPDATES //uncomment this for mods, to not get any update notifications
 
+#if !(defined(MACOSX) && defined(DEBUG))
 #define HIGH_QUALITY_RESAMPLE			//High quality image resampling, slower but much higher quality than my terribad linear interpolation
+#endif
 
 #if defined(SNAPSHOT)
 #define IDENT_RELTYPE "S"
@@ -72,7 +86,6 @@
 #define MTOS(str) MTOS_EXPAND(str)
 
 #define SERVER "powdertoy.co.uk"
-#define SCRIPTSERVER "powdertoy.co.uk"
 #define STATICSERVER "static.powdertoy.co.uk"
 
 #define LOCAL_SAVE_DIR "Saves"
@@ -173,11 +186,14 @@
 #define TPT_INLINE inline
 #endif
 
-#if defined(WIN) && defined(__GNUC__)
-#define TH_ENTRY_POINT __attribute__((force_align_arg_pointer)) 
-#else
-#define TH_ENTRY_POINT
+// old Platform.h stuff, maybe we should have a file for these kinds of things
+typedef unsigned short Uint16;
+
+#ifndef NULL
+# define NULL 0
 #endif
+
+#include <climits>
 
 #define SDEUT
 //#define REALHEAT

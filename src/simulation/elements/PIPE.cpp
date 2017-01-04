@@ -11,7 +11,7 @@ Element_PIPE::Element_PIPE()
 	MenuVisible = 1;
 	MenuSection = SC_FORCE;
 	Enabled = 1;
-	
+
 	Advection = 0.0f;
 	AirDrag = 0.00f * CFDS;
 	AirLoss = 0.95f;
@@ -21,21 +21,20 @@ Element_PIPE::Element_PIPE()
 	Diffusion = 0.00f;
 	HotAir = 0.000f	* CFDS;
 	Falldown = 0;
-	
+
 	Flammable = 0;
 	Explosive = 0;
 	Meltable = 0;
 	Hardness = 0;
-	
+
 	Weight = 100;
-	
+
 	Temperature = 273.15f;
 	HeatConduct = 0;
 	Description = "PIPE, moves particles around. Once the BRCK generates, erase some for the exit. Then the PIPE generates and is usable.";
-	
-	State = ST_SOLID;
+
 	Properties = TYPE_SOLID|PROP_LIFE_DEC;
-	
+
 	LowPressure = IPL;
 	LowPressureTransition = NT;
 	HighPressure = 10.0f;
@@ -44,7 +43,7 @@ Element_PIPE::Element_PIPE()
 	LowTemperatureTransition = NT;
 	HighTemperature = ITH;
 	HighTemperatureTransition = NT;
-	
+
 	Update = &Element_PIPE::update;
 	Graphics = &Element_PIPE::graphics;
 
@@ -73,7 +72,7 @@ signed char pos_1_ry[] = {-1, 0, 1,-1, 1,-1, 0, 1};
 
 //#TPT-Directive ElementHeader Element_PIPE static int update(UPDATE_FUNC_ARGS)
 int Element_PIPE::update(UPDATE_FUNC_ARGS)
- {
+{
 	int r, rx, ry, np;
 	int rnd, rndstore;
 	if ((parts[i].tmp&0xFF)>=PT_NUM || !sim->elements[parts[i].tmp&0xFF].Enabled)
@@ -210,7 +209,7 @@ int Element_PIPE::update(UPDATE_FUNC_ARGS)
 						transfer_part_to_pipe(parts+(r>>8), parts+i);
 						sim->kill_part(r>>8);
 					}
-					else if ((parts[i].tmp&0xFF) == 0 && (r&0xFF)==PT_STOR && parts[r>>8].tmp && (sim->elements[parts[r>>8].tmp].Properties & (TYPE_PART | TYPE_LIQUID | TYPE_GAS | TYPE_ENERGY)))
+					else if ((parts[i].tmp&0xFF) == 0 && (r&0xFF)==PT_STOR && parts[r>>8].tmp>0 && sim->IsValidElement(parts[r>>8].tmp) && (sim->elements[parts[r>>8].tmp].Properties & (TYPE_PART | TYPE_LIQUID | TYPE_GAS | TYPE_ENERGY)))
 					{
 						// STOR stores properties in the same places as PIPE does
 						transfer_pipe_to_pipe(parts+(r>>8), parts+i);
@@ -279,9 +278,11 @@ int Element_PIPE::update(UPDATE_FUNC_ARGS)
 //#TPT-Directive ElementHeader Element_PIPE static int graphics(GRAPHICS_FUNC_ARGS)
 int Element_PIPE::graphics(GRAPHICS_FUNC_ARGS)
 {
-	int t = cpart->tmp & 0xFF;;
+	int t = cpart->tmp & 0xFF;
 	if (t>0 && t<PT_NUM && ren->sim->elements[t].Enabled)
 	{
+		if (t == PT_STKM || t == PT_STKM2 || t == PT_FIGH)
+			return 0;
 		if (ren->graphicscache[t].isready)
 		{
 			*pixel_mode = ren->graphicscache[t].pixel_mode;

@@ -8,7 +8,7 @@ Element_STKM::Element_STKM()
 	MenuVisible = 1;
 	MenuSection = SC_SPECIAL;
 	Enabled = 1;
-	
+
 	Advection = 0.5f;
 	AirDrag = 0.00f * CFDS;
 	AirLoss = 0.2f;
@@ -18,21 +18,20 @@ Element_STKM::Element_STKM()
 	Diffusion = 0.0f;
 	HotAir = 0.00f	* CFDS;
 	Falldown = 0;
-	
+
 	Flammable = 0;
 	Explosive = 0;
 	Meltable = 0;
 	Hardness = 0;
-	
+
 	Weight = 50;
-	
+
 	Temperature = R_TEMP+14.6f+273.15f;
 	HeatConduct = 0;
 	Description = "Stickman. Don't kill him! Control with the arrow keys.";
-	
-	State = ST_NONE;
+
 	Properties = PROP_NOCTYPEDRAW;
-	
+
 	LowPressure = IPL;
 	LowPressureTransition = NT;
 	HighPressure = IPH;
@@ -41,7 +40,7 @@ Element_STKM::Element_STKM()
 	LowTemperatureTransition = NT;
 	HighTemperature = 620.0f;
 	HighTemperatureTransition = PT_FIRE;
-	
+
 	Update = &Element_STKM::update;
 	Graphics = &Element_STKM::graphics;
 }
@@ -66,8 +65,8 @@ int Element_STKM::graphics(GRAPHICS_FUNC_ARGS)
 
 #define INBOND(x, y) ((x)>=0 && (y)>=0 && (x)<XRES && (y)<YRES)
 
-//#TPT-Directive ElementHeader Element_STKM static int run_stickman(playerst* playerp, UPDATE_FUNC_ARGS)
-int Element_STKM::run_stickman(playerst* playerp, UPDATE_FUNC_ARGS) {
+//#TPT-Directive ElementHeader Element_STKM static int run_stickman(playerst *playerp, UPDATE_FUNC_ARGS)
+int Element_STKM::run_stickman(playerst *playerp, UPDATE_FUNC_ARGS) {
 	int r, rx, ry;
 	int t = parts[i].type;
 	float pp, d;
@@ -79,8 +78,8 @@ int Element_STKM::run_stickman(playerst* playerp, UPDATE_FUNC_ARGS) {
 	float rocketBootsHeadEffectV = 0.3f;// stronger acceleration vertically, to counteract gravity
 	float rocketBootsFeetEffectV = 0.45f;
 
-	if ((parts[i].ctype>0 && parts[i].ctype<PT_NUM && sim->elements[parts[i].ctype].Enabled && sim->elements[parts[i].ctype].Falldown>0) || parts[i].ctype==SPC_AIR || parts[i].ctype == PT_NEUT || parts[i].ctype == PT_PHOT || parts[i].ctype == PT_LIGH)
-		playerp->elem = parts[i].ctype;
+	if (parts[i].ctype && sim->IsValidElement(parts[i].ctype))
+		STKM_set_element(sim, playerp, parts[i].ctype);
 	playerp->frames++;
 
 	//Temperature handling
@@ -202,7 +201,7 @@ int Element_STKM::run_stickman(playerst* playerp, UPDATE_FUNC_ARGS) {
 	gy = (playerp->legs[5] + playerp->legs[13])/2 + gvx;
 	dl = pow(gx - playerp->legs[4], 2) + pow(gy - playerp->legs[5], 2);
 	dr = pow(gx - playerp->legs[12], 2) + pow(gy - playerp->legs[13], 2);
-	
+
 	//Go left
 	if (((int)(playerp->comm)&0x01) == 0x01)
 	{
@@ -349,9 +348,11 @@ int Element_STKM::run_stickman(playerst* playerp, UPDATE_FUNC_ARGS) {
 	}
 
 	//Charge detector wall if foot inside
-	if (sim->bmap[(int)(playerp->legs[5]+0.5)/CELL][(int)(playerp->legs[4]+0.5)/CELL]==WL_DETECT)
+	if (INBOND((int)(playerp->legs[4]+0.5)/CELL, (int)(playerp->legs[5]+0.5)/CELL) &&
+	       sim->bmap[(int)(playerp->legs[5]+0.5)/CELL][(int)(playerp->legs[4]+0.5)/CELL]==WL_DETECT)
 		sim->set_emap((int)playerp->legs[4]/CELL, (int)playerp->legs[5]/CELL);
-	if (sim->bmap[(int)(playerp->legs[13]+0.5)/CELL][(int)(playerp->legs[12]+0.5)/CELL]==WL_DETECT)
+	if (INBOND((int)(playerp->legs[12]+0.5)/CELL, (int)(playerp->legs[13]+0.5)/CELL) &&
+	        sim->bmap[(int)(playerp->legs[13]+0.5)/CELL][(int)(playerp->legs[12]+0.5)/CELL]==WL_DETECT)
 		sim->set_emap((int)(playerp->legs[12]+0.5)/CELL, (int)(playerp->legs[13]+0.5)/CELL);
 
 	//Searching for particles near head
@@ -366,16 +367,7 @@ int Element_STKM::run_stickman(playerst* playerp, UPDATE_FUNC_ARGS) {
 				if (!r && !sim->bmap[(y+ry)/CELL][(x+rx)/CELL])
 					continue;
 				
-				if (sim->elements[r&0xFF].Falldown!=0 || sim->elements[r&0xFF].State == ST_GAS
-					|| sim->elements[r&0xFF].Properties&TYPE_GAS
-					|| sim->elements[r&0xFF].Properties&TYPE_LIQUID
-					|| (r&0xFF) == PT_NEUT || (r&0xFF) == PT_PHOT)
-				{
-					if (!playerp->rocketBoots || (r&0xFF)!=PT_PLSM)
-						playerp->elem = r&0xFF;  //Current element
-				}
-				if ((r&0xFF)==PT_TESC || (r&0xFF)==PT_LIGH)
-					playerp->elem = PT_LIGH;
+				STKM_set_element(sim, playerp, r&0xFF);
 				if ((r&0xFF) == PT_PLNT && parts[i].life<100) //Plant gives him 5 HP
 				{
 					if (parts[i].life<=95)
@@ -412,7 +404,7 @@ int Element_STKM::run_stickman(playerst* playerp, UPDATE_FUNC_ARGS) {
 	{
 		ry -= 2*(rand()%2)+1;
 		r = pmap[ry][rx];
-		if (sim->elements[r&0xFF].State == ST_SOLID)
+		if (sim->elements[r&0xFF].Properties&TYPE_SOLID)
 		{
 			sim->create_part(-1, rx, ry, PT_SPRK);
 			playerp->frames = 0;
@@ -576,8 +568,8 @@ int Element_STKM::run_stickman(playerst* playerp, UPDATE_FUNC_ARGS) {
 	return 0;
 }
 
-//#TPT-Directive ElementHeader Element_STKM static void STKM_interact(Simulation * sim, playerst* playerp, int i, int x, int y)
-void Element_STKM::STKM_interact(Simulation * sim, playerst* playerp, int i, int x, int y)
+//#TPT-Directive ElementHeader Element_STKM static void STKM_interact(Simulation *sim, playerst *playerp, int i, int x, int y)
+void Element_STKM::STKM_interact(Simulation *sim, playerst *playerp, int i, int x, int y)
 {
 	int r;
 	if (x<0 || y<0 || x>=XRES || y>=YRES || !sim->parts[i].type)
@@ -643,8 +635,8 @@ void Element_STKM::STKM_interact(Simulation * sim, playerst* playerp, int i, int
 	}
 }
 
-//#TPT-Directive ElementHeader Element_STKM static void STKM_init_legs(Simulation * sim, playerst* playerp, int i)
-void Element_STKM::STKM_init_legs(Simulation * sim, playerst* playerp, int i)
+//#TPT-Directive ElementHeader Element_STKM static void STKM_init_legs(Simulation * sim, playerst *playerp, int i)
+void Element_STKM::STKM_init_legs(Simulation * sim, playerst *playerp, int i)
 {
 	int x, y;
 
@@ -676,6 +668,22 @@ void Element_STKM::STKM_init_legs(Simulation * sim, playerst* playerp, int i)
 	playerp->comm = 0;
 	playerp->pcomm = 0;
 	playerp->frames = 0;
+}
+
+//#TPT-Directive ElementHeader Element_STKM static void STKM_set_element(Simulation *sim, playerst *playerp, int element)
+void Element_STKM::STKM_set_element(Simulation *sim, playerst *playerp, int element)
+{
+	if (sim->elements[element].Falldown != 0
+	    || sim->elements[element].Properties&TYPE_GAS
+	    || sim->elements[element].Properties&TYPE_LIQUID
+	    || sim->elements[element].Properties&TYPE_ENERGY
+	    || element == PT_LOLZ || element == PT_LOVE || element == SPC_AIR)
+	{
+		if (!playerp->rocketBoots || element != PT_PLSM)
+			playerp->elem = element;
+	}
+	if (element == PT_TESC || element == PT_LIGH)
+		playerp->elem = PT_LIGH;
 }
 
 

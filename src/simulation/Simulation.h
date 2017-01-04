@@ -60,8 +60,12 @@ public:
 	bool elementRecount;
 	int elementCount[PT_NUM];
 	int ISWIRE;
-	int force_stacking_check;
+	bool force_stacking_check;
 	int emp_decor;
+	int emp_trigger_count;
+	bool etrd_count_valid;
+	int etrd_life0_count;
+	int lightningRecreate;
 	//Stickman
 	playerst player;
 	playerst player2;
@@ -132,6 +136,9 @@ public:
 	int eval_move(int pt, int nx, int ny, unsigned *rr);
 	void init_can_move();
 	bool IsWallBlocking(int x, int y, int type);
+	bool IsValidElement(int type) {
+		return (type >= 0 && type < PT_NUM && elements[type].Enabled);
+	}
 	void create_cherenkov_photon(int pp);
 	void create_gain_photon(int pp);
 	void kill_part(int i);
@@ -143,7 +150,7 @@ public:
 	void part_change_type(int i, int x, int y, int t);
 	//int InCurrentBrush(int i, int j, int rx, int ry);
 	//int get_brush_flags();
-	int create_part(int p, int x, int y, int t);
+	int create_part(int p, int x, int y, int t, int v = -1);
 	void delete_part(int x, int y);
 	void get_sign_pos(int i, int *x0, int *y0, int *w, int *h);
 	int is_wire(int x, int y);
@@ -151,11 +158,11 @@ public:
 	void set_emap(int x, int y);
 	int parts_avg(int ci, int ni, int t);
 	void create_arc(int sx, int sy, int dx, int dy, int midpoints, int variance, int type, int flags);
-	int nearest_part(int ci, int t, int max_d);
 	void UpdateParticles(int start, int end);
 	void SimulateGoL();
 	void CheckStacking();
-	void UpdateSim();
+	void BeforeSim();
+	void AfterSim();
 	void rotate_area(int area_x, int area_y, int area_w, int area_h, int invert);
 	void clear_area(int area_x, int area_y, int area_w, int area_h);
 
@@ -166,6 +173,8 @@ public:
 	void ApplyDecorationPoint(int x, int y, int colR, int colG, int colB, int colA, int mode, Brush * cBrush = NULL);
 	void ApplyDecorationLine(int x1, int y1, int x2, int y2, int colR, int colG, int colB, int colA, int mode, Brush * cBrush = NULL);
 	void ApplyDecorationBox(int x1, int y1, int x2, int y2, int colR, int colG, int colB, int colA, int mode);
+	bool ColorCompare(Renderer *ren, int x, int y, int replaceR, int replaceG, int replaceB);
+	void ApplyDecorationFill(Renderer *ren, int x, int y, int colR, int colG, int colB, int colA, int replaceR, int replaceG, int replaceB);
 
 	//Drawing Tools like HEAT, AIR, and GRAV
 	int Tool(int x, int y, int tool, float strength = 1.0f);
@@ -201,6 +210,21 @@ public:
 	void clear_sim();
 	Simulation();
 	~Simulation();
+
+	bool InBounds(int x, int y)
+	{
+		return (x>=0 && y>=0 && x<XRES && y<YRES);
+	}
+
+	// these don't really belong anywhere at the moment, so go here for loop edge mode
+	static int remainder_p(int x, int y)
+	{
+		return (x % y) + (x>=0 ? 0 : y);
+	}
+	static float remainder_p(float x, float y)
+	{
+		return std::fmod(x, y) + (x>=0 ? 0 : y);
+	}
 };
 
 #endif /* SIMULATION_H */

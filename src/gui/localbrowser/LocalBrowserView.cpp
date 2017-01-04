@@ -2,6 +2,7 @@
 #include "client/Client.h"
 #include "Format.h"
 #include "LocalBrowserView.h"
+#include "PowderToy.h"
 
 #include "gui/interface/Button.h"
 #include "gui/interface/Textbox.h"
@@ -22,7 +23,7 @@ LocalBrowserView::LocalBrowserView():
 	pageCount(0)
 {
 	nextButton = new ui::Button(ui::Point(WINDOWW-52, WINDOWH-18), ui::Point(50, 16), "Next \x95");
-	previousButton = new ui::Button(ui::Point(1, WINDOWH-18), ui::Point(50, 16), "\x96 Prev");
+	previousButton = new ui::Button(ui::Point(2, WINDOWH-18), ui::Point(50, 16), "\x96 Prev");
 	undeleteButton = new ui::Button(ui::Point(WINDOWW-122, WINDOWH-18), ui::Point(60, 16), "Rescan");
 	AddComponent(nextButton);
 	AddComponent(previousButton);
@@ -115,7 +116,7 @@ void LocalBrowserView::textChanged()
 		pageTextbox->SetText(format::NumberToString(pageCount));
 	changed = true;
 #ifdef USE_SDL
-	lastChanged = SDL_GetTicks()+600;
+	lastChanged = GetTicks()+600;
 #endif
 }
 
@@ -123,7 +124,7 @@ void LocalBrowserView::OnTick(float dt)
 {
 	c->Update();
 #ifdef USE_SDL
-	if (changed && lastChanged < SDL_GetTicks())
+	if (changed && lastChanged < GetTicks())
 	{
 		changed = false;
 		c->SetPage(std::max(format::StringToNumber<int>(pageTextbox->GetText()), 0));
@@ -246,12 +247,16 @@ void LocalBrowserView::NotifySelectedChanged(LocalBrowserModel * sender)
 		}
 	}
 
-	if(selected.size())
+	if (selected.size())
 	{
 		removeSelected->Visible = true;
+		pageLabel->Visible = pageCountLabel->Visible = pageTextbox->Visible = false;
 	}
-	else
+	else if (removeSelected->Visible)
+	{
 		removeSelected->Visible = false;
+		pageLabel->Visible = pageCountLabel->Visible = pageTextbox->Visible = true;
+	}
 }
 
 void LocalBrowserView::OnMouseWheel(int x, int y, int d)
@@ -266,15 +271,15 @@ void LocalBrowserView::OnMouseWheel(int x, int y, int d)
 
 void LocalBrowserView::OnKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool alt)
 {
-	if(key == KEY_ESCAPE)
+	if (key == SDLK_ESCAPE)
 		c->Exit();
-	else if (key == KEY_LCTRL || key == KEY_RCTRL)
+	else if (key == SDLK_LCTRL || key == SDLK_RCTRL)
 		c->SetMoveToFront(false);
 }
 
 void LocalBrowserView::OnKeyRelease(int key, Uint16 character, bool shift, bool ctrl, bool alt)
 {
-	if (key == KEY_LCTRL || key == KEY_RCTRL)
+	if (key == SDLK_LCTRL || key == SDLK_RCTRL)
 		c->SetMoveToFront(true);
 }
 

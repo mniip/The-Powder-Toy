@@ -65,6 +65,9 @@ private:
 	User currentUser;
 	float toolStrength;
 	std::deque<Snapshot*> history;
+	Snapshot *redoHistory;
+	unsigned int historyPosition;
+	unsigned int undoHistoryLimit;
 
 	size_t activeColourPreset;
 	std::vector<ui::Colour> colourPresets;
@@ -125,10 +128,17 @@ public:
 	std::string GetInfoTip();
 
 	void BuildMenus();
+	void BuildFavoritesMenu();
 	void BuildQuickOptionMenu(GameController * controller);
 
 	std::deque<Snapshot*> GetHistory();
+	unsigned int GetHistoryPosition();
 	void SetHistory(std::deque<Snapshot*> newHistory);
+	void SetHistoryPosition(unsigned int newHistoryPosition);
+	Snapshot * GetRedoHistory();
+	void SetRedoHistory(Snapshot * redo);
+	unsigned int GetUndoHistoryLimit();
+	void SetUndoHistoryLimit(unsigned int undoHistoryLimit_);
 
 	void UpdateQuickOptions();
 
@@ -187,7 +197,7 @@ public:
 	ui::Point GetZoomWindowPosition();
 	void SetClipboard(GameSave * save);
 	void SetPlaceSave(GameSave * save);
-	void Log(string message);
+	void Log(string message, bool printToFile);
 	deque<string> GetLog();
 	GameSave * GetClipboard();
 	GameSave * GetPlaceSave();

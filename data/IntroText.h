@@ -12,11 +12,11 @@ static const char *introTextData =
 	"Use the mouse scroll wheel, or '[' and ']', to change the tool size for particles.\n"
 	"Middle click or Alt+Click to \"sample\" the particles.\n"
 	"Ctrl+Z will act as Undo.\n"
-	"\n\boUse 'Z' for a zoom tool. Click to make the drawable zoom window stay around. Use the wheel to change the zoom strength\n"
-	"The spacebar can be used to pause physics.\n"
-	"Use 'S' to save parts of the window as 'stamps'.\n"
-	"'L' will load the most recent stamp, 'K' shows a library of stamps you saved.\n"
-	"'P' will take a screenshot and save it into the current directory.\n"
+	"\n\boUse 'Z' for a zoom tool. Click to make the drawable zoom window stay around. Use the wheel to change the zoom strength.\n"
+	"The spacebar can be used to pause physics. Use 'F' to step ahead by one frame.\n"
+	"Use 'S' to save parts of the window as 'stamps'. 'L' loads the most recent stamp, 'K' shows a library of stamps you saved.\n"
+	"Use 'P' to take a screenshot and save it into the current directory.\n"
+	"Use 'H' to toggle the HUD. Use 'D' to toggle debug mode in the HUD.\n"
 	"\n"
 	"Contributors: \bgStanislaw K Skowronek (Designed the original Powder Toy),\n"
 	"\bgSimon Robertshaw, Skresanov Savely, cracker64, Catelite, Bryan Hoyle, Nathan Cousins, jacksonmj,\n"
@@ -29,6 +29,9 @@ static const char *introTextData =
 #endif
 	"\n"
 	"\bt" MTOS(SAVE_VERSION) "." MTOS(MINOR_VERSION) "." MTOS(BUILD_NUM) " " IDENT_PLATFORM " "
+#ifdef SNAPSHOT
+	"SNAPSHOT " MTOS(SNAPSHOT_ID) " "
+#endif
 #ifdef X86
 	"X86 "
 #endif
@@ -40,9 +43,6 @@ static const char *introTextData =
 #endif
 #ifdef X86_SSE3
 	"X86_SSE3 "
-#endif
-#ifdef MACOSX
-	"MACOSX "
 #endif
 #ifdef LUACONSOLE
 	"LUACONSOLE "

@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include <string.h>
+#include <cstring>
 #if !defined(WIN) || defined(__GNUC__)
 #include <strings.h>
 #endif
@@ -31,7 +31,7 @@ std::string CommandInterface::FormatCommand(std::string command)
 
 void CommandInterface::Log(LogType type, std::string message)
 {
-	m->Log(message);
+	m->Log(message, type == LogError || type == LogNotice);
 }
 
 int CommandInterface::GetPropertyOffset(std::string key, FormatType & format)

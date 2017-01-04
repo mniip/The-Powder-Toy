@@ -1,4 +1,3 @@
-//#include "Platform.h"
 #include <iostream>
 #include "gui/interface/Component.h"
 #include "gui/interface/Engine.h"
@@ -19,7 +18,7 @@ Component::Component(Window* parent_state):
 	menu(NULL),
 	Position(Point(0,0)),
 	Size(Point(0,0)),
-	Locked(false),
+	Enabled(true),
 	Visible(true)
 {
 
@@ -35,7 +34,7 @@ Component::Component(Point position, Point size):
 	menu(NULL),
 	Position(position),
 	Size(size),
-	Locked(false),
+	Enabled(true),
 	Visible(true)
 {
 
@@ -51,7 +50,7 @@ Component::Component():
 	menu(NULL),
 	Position(Point(0,0)),
 	Size(Point(0,0)),
-	Locked(false),
+	Enabled(true),
 	Visible(true)
 {
 
@@ -239,6 +238,5 @@ void Component::OnMouseWheelInside(int localx, int localy, int d)
 
 Component::~Component()
 {
-	if(menu)
-		delete menu;
+	delete menu;
 }

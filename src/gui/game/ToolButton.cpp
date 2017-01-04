@@ -1,14 +1,18 @@
 #include "ToolButton.h"
 #include "gui/interface/Keys.h"
+#include "gui/interface/Mouse.h"
+#include "Favorite.h"
 
-ToolButton::ToolButton(ui::Point position, ui::Point size, std::string text_, std::string toolTip):
-	ui::Button(position, size, text_, toolTip)
+ToolButton::ToolButton(ui::Point position, ui::Point size, std::string text_, std::string toolIdentifier, std::string toolTip):
+	ui::Button(position, size, text_, toolTip),
+	toolIdentifier(toolIdentifier)
 {
 	SetSelectionState(-1);
 	Appearance.BorderActive = ui::Colour(255, 0, 0);
+	Appearance.BorderFavorite = ui::Colour(255, 255, 0);
 
 	//don't use "..." on elements that have long names
-	buttonDisplayText = ButtonText;
+	buttonDisplayText = ButtonText.substr(0, 7);
 	Component::TextPosition(buttonDisplayText);
 }
 
@@ -22,14 +26,20 @@ void ToolButton::OnMouseUnclick(int x, int y, unsigned int button)
 	if(isButtonDown)
 	{
 		isButtonDown = false;
-		if(button == BUTTON_LEFT)
+		if(button == SDL_BUTTON_LEFT)
 			SetSelectionState(0);
-		if(button == BUTTON_RIGHT)
+		if(button == SDL_BUTTON_RIGHT)
 			SetSelectionState(1);
-		if(button == BUTTON_MIDDLE)
+		if(button == SDL_BUTTON_MIDDLE)
 			SetSelectionState(2);
 		DoAction();
 	}
+}
+
+void ToolButton::OnMouseUp(int x, int y, unsigned int button)
+{
+	// mouse was unclicked, reset variables in case the unclick happened outside
+	isButtonDown = false;
 }
 
 void ToolButton::Draw(const ui::Point& screenPos)
@@ -53,6 +63,10 @@ void ToolButton::Draw(const ui::Point& screenPos)
 	else
 	{
 		g->drawrect(screenPos.X, screenPos.Y, Size.X, Size.Y, Appearance.BorderInactive.Red, Appearance.BorderInactive.Green, Appearance.BorderInactive.Blue, Appearance.BorderInactive.Alpha);
+	}
+	if (Favorite::Ref().IsFavorite(toolIdentifier))
+	{
+		g->drawtext(screenPos.X, screenPos.Y, "\xE8", Appearance.BorderFavorite.Red, Appearance.BorderFavorite.Green, Appearance.BorderFavorite.Blue, Appearance.BorderFavorite.Alpha);
 	}
 
 	if (totalColour<544)

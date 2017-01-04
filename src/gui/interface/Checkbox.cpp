@@ -59,7 +59,7 @@ void Checkbox::OnMouseHover(int x, int y)
 {
 	if(toolTip.length()>0 && GetParentWindow())
 	{
-		GetParentWindow()->ToolTip(this, ui::Point(x, y), toolTip);
+		GetParentWindow()->ToolTip(Position, toolTip);
 	}
 }
 
@@ -96,13 +96,11 @@ void Checkbox::Draw(const Point& screenPos)
 
 void Checkbox::SetActionCallback(CheckboxAction * action)
 {
-	if(actionCallback)
-		delete actionCallback;
+	delete actionCallback;
 	actionCallback = action;
 }
 
 Checkbox::~Checkbox() {
-	if(actionCallback)
-		delete actionCallback;
+	delete actionCallback;
 }
 

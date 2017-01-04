@@ -1,10 +1,10 @@
 #pragma once
 
 #include <stack>
-#include "Singleton.h"
-#include "Platform.h"
+#include "common/Singleton.h"
 #include "graphics/Graphics.h"
 #include "Window.h"
+#include "PowderToy.h"
 
 namespace ui
 {
@@ -36,8 +36,8 @@ namespace ui
 		void Begin(int width, int height);
 		inline bool Running() { return running_; }
 		inline bool Broken() { return break_; } 
-		inline int LastTick() { return lastTick; }
-		inline void LastTick(int tick) { lastTick = tick; }
+		inline long unsigned int LastTick() { return lastTick; }
+		inline void LastTick(long unsigned int tick) { lastTick = tick; }
 		void Exit();
 		void Break();
 		void UnBreak();
@@ -46,6 +46,8 @@ namespace ui
 		inline bool GetFullscreen() { return Fullscreen; }
 		void SetScale(int scale) { Scale = scale; }
 		inline int GetScale() { return Scale; }
+		void Set3dDepth(int depth3d) { Depth3d = depth3d; if (Depth3d) SetCursorEnabled(0); else SetCursorEnabled(1);}
+		inline int Get3dDepth() { return Depth3d; }
 		void SetFastQuit(bool fastquit) { FastQuit = fastquit; }
 		inline bool GetFastQuit() {return FastQuit; }
 
@@ -75,6 +77,7 @@ namespace ui
 		Graphics * g;
 		int Scale;
 		bool Fullscreen;
+		int Depth3d;
 
 		unsigned int FrameIndex;
 	private:
@@ -93,7 +96,7 @@ namespace ui
 		bool break_;
 		bool FastQuit;
 		
-		int lastTick;
+		long unsigned int lastTick;
 		int mouseb_;
 		int mousex_;
 		int mousey_;

@@ -10,6 +10,7 @@
 #include "Format.h"
 #include "ContextMenu.h"
 #include "Keys.h"
+#include "Mouse.h"
 
 namespace ui {
 
@@ -118,14 +119,10 @@ SaveButton::~SaveButton()
 {
 	RequestBroker::Ref().DetachRequestListener(this);
 
-	if(thumbnail)
-		delete thumbnail;
-	if(actionCallback)
-		delete actionCallback;
-	if(save)
-		delete save;
-	if(file)
-		delete file;
+	delete thumbnail;
+	delete actionCallback;
+	delete save;
+	delete file;
 }
 
 void SaveButton::OnResponseReady(void * imagePtr, int identifier)
@@ -133,8 +130,7 @@ void SaveButton::OnResponseReady(void * imagePtr, int identifier)
 	VideoBuffer * image = (VideoBuffer*)imagePtr;
 	if(image)
 	{
-		if(thumbnail)
-			delete thumbnail;
+		delete thumbnail;
 		thumbnail = image;
 		waitingForThumb = false;
 	}
@@ -348,7 +344,7 @@ void SaveButton::OnContextMenuAction(int item)
 
 void SaveButton::OnMouseClick(int x, int y, unsigned int button)
 {
-	if(button == BUTTON_RIGHT)
+	if(button == SDL_BUTTON_RIGHT)
 	{
 		if(menu)
 			menu->Show(GetScreenPos() + ui::Point(x, y));

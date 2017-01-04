@@ -9,7 +9,7 @@
 #include "Format.h"
 #include "LuaScriptInterface.h"
 #include "LuaScriptHelper.h"
-#include "Misc.h"
+#include "Platform.h"
 #include "PowderToy.h"
 
 #include "gui/dialogues/ErrorMessage.h"
@@ -17,6 +17,7 @@
 #include "gui/dialogues/TextPrompt.h"
 #include "gui/dialogues/ConfirmPrompt.h"
 #include "gui/game/GameModel.h"
+#include "gui/interface/Keys.h"
 #include "simulation/Simulation.h"
 
 
@@ -309,8 +310,8 @@ int luacon_element_getproperty(const char * key, int * format, unsigned int * mo
 		*format = 3;
 	}
 	else if (!strcmp(key, "state")) {
-		offset = offsetof(Element, State);
-		*format = 3;
+		offset = 0;
+		*format = -1;
 	}
 	else if (!strcmp(key, "properties")) {
 		offset = offsetof(Element, Properties);
@@ -370,6 +371,8 @@ int luacon_elementread(lua_State* l)
 		tempinteger = *((unsigned char*)(((unsigned char*)&luacon_sim->elements[i])+offset));
 		lua_pushnumber(l, tempinteger);
 		break;
+	default:
+		lua_pushnumber(l, 0);
 	}
 	return 1;
 }
@@ -436,7 +439,7 @@ int luacon_elementwrite(lua_State* l)
 }
 
 bool shortcuts = true;
-int luacon_keyevent(int key, int modifier, int event)
+int luacon_keyevent(int key, Uint16 character, int modifier, int event)
 {
 	int kycontinue = 1;
 	lua_State* l=luacon_ci->l;
@@ -454,7 +457,10 @@ int luacon_keyevent(int key, int modifier, int event)
 	for (int i = 1; i <= len && kycontinue; i++)
 	{
 		lua_rawgeti(l, -1, i);
-		lua_pushlstring(l, (const char*)&key, 1);
+		if ((modifier & KMOD_CTRL) && (character < ' ' || character > '~') && key < 256)
+			lua_pushlstring(l, (const char*)&key, 1);
+		else
+			lua_pushlstring(l, (const char*)&character, 1);
 		lua_pushinteger(l, key);
 		lua_pushinteger(l, modifier);
 		lua_pushinteger(l, event);
@@ -463,7 +469,7 @@ int luacon_keyevent(int key, int modifier, int event)
 		{
 			if (!strcmp(luacon_geterror(), "Error: Script not responding"))
 			{
-				ui::Engine::Ref().LastTick(gettime());
+				ui::Engine::Ref().LastTick(Platform::GetTime());
 				for (int j = i; j <= len-1; j++)
 				{
 					lua_rawgeti(l, -2, j+1);
@@ -516,7 +522,7 @@ int luacon_mouseevent(int mx, int my, int mb, int event, int mouse_wheel)
 		{
 			if (!strcmp(luacon_geterror(), "Error: Script not responding"))
 			{
-				ui::Engine::Ref().LastTick(gettime());
+				ui::Engine::Ref().LastTick(Platform::GetTime());
 				for (int j = i; j <= len-1; j++)
 				{
 					lua_rawgeti(l, -2, j+1);
@@ -567,7 +573,7 @@ int luacon_step(int mx, int my)
 		{
 			if (!strcmp(luacon_geterror(), "Error: Script not responding"))
 			{
-				ui::Engine::Ref().LastTick(gettime());
+				ui::Engine::Ref().LastTick(Platform::GetTime());
 				for (int j = i; j <= len-1; j++)
 				{
 					lua_rawgeti(l, -2, j+1);
@@ -589,17 +595,17 @@ int luacon_step(int mx, int my)
 
 int luacon_eval(const char *command)
 {
-	ui::Engine::Ref().LastTick(gettime());
+	ui::Engine::Ref().LastTick(Platform::GetTime());
 	return luaL_dostring (luacon_ci->l, command);
 }
 
 void luacon_hook(lua_State * l, lua_Debug * ar)
 {
-	if(ar->event == LUA_HOOKCOUNT && gettime()-ui::Engine::Ref().LastTick() > 3000)
+	if(ar->event == LUA_HOOKCOUNT && Platform::GetTime()-ui::Engine::Ref().LastTick() > 3000)
 	{
 		if(ConfirmPrompt::Blocking("Script not responding", "The Lua script may have stopped responding. There might be an infinite loop. Press \"Stop\" to stop it", "Stop"))
 			luaL_error(l, "Error: Script not responding");
-		ui::Engine::Ref().LastTick(gettime());
+		ui::Engine::Ref().LastTick(Platform::GetTime());
 	}
 }
 
@@ -1037,20 +1043,7 @@ int luatpt_reset_velocity(lua_State* l)
 
 int luatpt_reset_spark(lua_State* l)
 {
-	int i;
-	for (i=0; i<NPART; i++)
-	{
-		if (luacon_sim->parts[i].type == PT_SPRK)
-		{
-			if (luacon_sim->parts[i].ctype > 0 && luacon_sim->parts[i].ctype < PT_NUM && luacon_sim->elements[luacon_sim->parts[i].ctype].Enabled)
-			{
-				luacon_sim->parts[i].type = luacon_sim->parts[i].ctype;
-				luacon_sim->parts[i].life = luacon_sim->parts[i].ctype = 0;
-			}
-			else
-				luacon_sim->kill_part(i);
-		}
-	}
+	luacon_controller->ResetSpark();
 	return 0;
 }
 
@@ -1691,6 +1684,16 @@ int luatpt_message_box(lua_State* l)
 	return 0;
 }
 
+int luatpt_confirm(lua_State *l)
+{
+	std::string title = std::string(luaL_optstring(l, 1, "Title"));
+	std::string message = std::string(luaL_optstring(l, 2, "Message"));
+	std::string buttonText = std::string(luaL_optstring(l, 3, "Confirm"));
+	bool ret = ConfirmPrompt::Blocking(title, message, buttonText);
+	lua_pushboolean(l, ret ? 1 : 0);
+	return 1;
+}
+
 int luatpt_get_numOfParts(lua_State* l)
 {
 	lua_pushinteger(l, luacon_sim->NUM_PARTS);
@@ -1797,6 +1800,37 @@ int luatpt_active_menu(lua_State* l)
 	return 0;
 }
 
+int luatpt_menu_enabled(lua_State* l)
+{
+	int menusection = luaL_checkint(l, 1);
+	if (menusection < 0 || menusection >= SC_TOTAL)
+		return luaL_error(l, "Invalid menu");
+	int acount = lua_gettop(l);
+	if (acount == 1)
+	{
+		lua_pushboolean(l, luacon_sim->msections[menusection].doshow);
+		return 1;
+	}
+	luaL_checktype(l, 2, LUA_TBOOLEAN);
+	int enabled = lua_toboolean(l, 2);
+	luacon_sim->msections[menusection].doshow = enabled;
+	luacon_model->BuildMenus();
+	return 0;
+}
+
+int luatpt_num_menus(lua_State* l)
+{
+	int acount = lua_gettop(l);
+	bool onlyEnabled = true;
+	if (acount > 0)
+	{
+		luaL_checktype(l, 1, LUA_TBOOLEAN);
+		onlyEnabled = lua_toboolean(l, 1);
+	}
+	lua_pushinteger(l, luacon_controller->GetNumMenus(onlyEnabled));
+	return 1;
+}
+
 int luatpt_decorations_enable(lua_State* l)
 {
 	int acount = lua_gettop(l);
@@ -1868,92 +1902,70 @@ int luatpt_setfpscap(lua_State* l)
 
 int luatpt_getscript(lua_State* l)
 {
-	char *filedata = NULL, *fileuri = NULL, *filename = NULL, *luacommand = NULL;
-	const char *lastError = NULL;
-	std::string fileauthor = "", fileid = "";
-	int len, ret,run_script;
-	FILE * outputfile;
+	int scriptID = luaL_checkinteger(l, 1);
+	const char *filename = luaL_checkstring(l, 2);
+	int runScript = luaL_optint(l, 3, 0);
+	int confirmPrompt = luaL_optint(l, 4, 1);
 
-	fileauthor = std::string(luaL_optstring(l, 1, ""));
-	fileid = std::string(luaL_optstring(l, 2, ""));
-	run_script = luaL_optint(l, 3, 0);
-	if(!fileauthor.length() || !fileid.length())
+	std::stringstream url;
+	url << "http://starcatcher.us/scripts/main.lua?get=" << scriptID;
+	if (confirmPrompt && !ConfirmPrompt::Blocking("Do you want to install script?", url.str(), "Install"))
+		return 0;
+
+	int ret, len;
+	char *scriptData = http_simple_get(url.str().c_str(), &ret, &len);
+	if (len <= 0 || !filename)
 	{
-		lastError = "Script Author or ID not given";
-		goto fin;
+		free(scriptData);
+		return luaL_error(l, "Server did not return data");
 	}
-	if(!ConfirmPrompt::Blocking("Do you want to install script?", fileid, "Install"))
-		goto fin;
-
-	fileuri = new char[strlen(SCRIPTSERVER)+fileauthor.length()+fileid.length()+44];
-	sprintf(fileuri, "http://" SCRIPTSERVER "/GetScript.api?Author=%s&Filename=%s", fileauthor.c_str(), fileid.c_str());
-
-	//filedata = http_auth_get(fileuri, svf_user_id, NULL, svf_session_id, &ret, &len);
-	filedata = http_auth_get(fileuri, NULL, NULL, NULL, &ret, &len);
-
-	if(len <= 0 || !filedata)
+	if (ret != 200)
 	{
-		lastError = "Server did not return data.";
-		goto fin;
-	}
-	if(ret != 200)
-	{
-		lastError = http_ret_text(ret);
-		goto fin;
+		free(scriptData);
+		return luaL_error(l, http_ret_text(ret));
 	}
 
-	filename = new char[fileauthor.length()+fileid.length()+strlen(PATH_SEP)+strlen(LOCAL_LUA_DIR)+6];
-	sprintf(filename, LOCAL_LUA_DIR PATH_SEP "%s_%s.lua", fileauthor.c_str(), fileid.c_str());
+	if (!strcmp(scriptData, "Invalid script ID\r\n"))
+	{
+		free(scriptData);
+		return luaL_error(l, "Invalid Script ID");
+	}
 
-	Client::Ref().MakeDirectory(LOCAL_LUA_DIR);
-
-	outputfile = fopen(filename, "r");
-	if(outputfile)
+	FILE *outputfile = fopen(filename, "r");
+	if (outputfile)
 	{
 		fclose(outputfile);
 		outputfile = NULL;
-		if(ConfirmPrompt::Blocking("File already exists, overwrite?", filename, "Overwrite"))
+		if (!confirmPrompt || ConfirmPrompt::Blocking("File already exists, overwrite?", filename, "Overwrite"))
 		{
-			outputfile = fopen(filename, "w");
+			outputfile = fopen(filename, "wb");
 		}
 		else
 		{
-			goto fin;
+			free(scriptData);
+			return 0;
 		}
 	}
 	else
 	{
-		outputfile = fopen(filename, "w");
+		outputfile = fopen(filename, "wb");
 	}
-
-	if(!outputfile)
+	if (!outputfile)
 	{
-		lastError = "Unable to write to file";
-		goto fin;
+		free(scriptData);
+		return luaL_error(l, "Unable to write to file");
 	}
 
-
-	fputs(filedata, outputfile);
+	fputs(scriptData, outputfile);
 	fclose(outputfile);
 	outputfile = NULL;
-	if(run_script)
+	if (runScript)
 	{
-		luacommand = new char[strlen(filename)+20];
-		sprintf(luacommand,"dofile(\"%s\")",filename);
-		luaL_dostring (l, luacommand);
+		std::stringstream luaCommand;
+		luaCommand << "dofile('" << filename << "')";
+		luaL_dostring(l, luaCommand.str().c_str());
 	}
 
-fin:
-	if(filedata) free(filedata);
-	if(fileuri) delete[] fileuri;
-	if(filename) delete[] filename;
-	if(luacommand) delete[] luacommand;
-	luacommand = NULL;
-
-	if(lastError)
-	{
-		return luaL_error(l, lastError);
-	}
 	return 0;
 }
 
@@ -2010,19 +2022,6 @@ int luatpt_screenshot(lua_State* l)
 	Client::Ref().WriteFile(data, filename.str());
 	lua_pushstring(l, filename.str().c_str());
 	return 1;
-}
-
-int luatpt_getclip (lua_State* l)
-{
-	lua_pushstring(l, ClipboardPull().c_str());
-	return 1; 
-}
-
-int luatpt_setclip (lua_State* l)
-{
-	luaL_checktype(l, 1, LUA_TSTRING);
-	ClipboardPush(luaL_optstring(l, 1, ""));
-	return 0;
 }
 
 #endif

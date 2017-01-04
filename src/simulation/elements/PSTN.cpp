@@ -8,7 +8,7 @@ Element_PSTN::Element_PSTN()
 	MenuVisible = 1;
 	MenuSection = SC_FORCE;
 	Enabled = 1;
-	
+
 	Advection = 0.0f;
 	AirDrag = 0.00f * CFDS;
 	AirLoss = 0.90f;
@@ -18,21 +18,20 @@ Element_PSTN::Element_PSTN()
 	Diffusion = 0.00f;
 	HotAir = 0.000f	* CFDS;
 	Falldown = 0;
-	
+
 	Flammable = 0;
 	Explosive = 0;
 	Meltable = 0;
 	Hardness = 0;
-	
+
 	Weight = 100;
-	
+
 	Temperature = 283.15f;
 	HeatConduct = 0;
 	Description = "Piston, extends and pushes particles.";
-	
-	State = ST_SOLID;
+
 	Properties = TYPE_SOLID;
-	
+
 	LowPressure = IPL;
 	LowPressureTransition = NT;
 	HighPressure = IPH;
@@ -41,7 +40,7 @@ Element_PSTN::Element_PSTN()
 	LowTemperatureTransition = NT;
 	HighTemperature = ITH;
 	HighTemperatureTransition = NT;
-	
+
 	Update = &Element_PSTN::update;
 	Graphics = &Element_PSTN::graphics;
 }
@@ -58,7 +57,7 @@ int Element_PSTN::tempParts[XRES];
 
 //#TPT-Directive ElementHeader Element_PSTN static int update(UPDATE_FUNC_ARGS)
 int Element_PSTN::update(UPDATE_FUNC_ARGS)
- {
+{
  	if(parts[i].life)
  		return 0;
  	int maxSize = parts[i].tmp ? parts[i].tmp : DEFAULT_LIMIT;
@@ -105,7 +104,8 @@ int Element_PSTN::update(UPDATE_FUNC_ARGS)
 								break;
 							}
 							r = pmap[y+nyy][x+nxx];
-							if((r&0xFF)==PT_PSTN) {
+							if((r&0xFF)==PT_PSTN)
+							{
 								if(parts[r>>8].life)
 									armCount++;
 								else if (armCount)
@@ -119,7 +119,16 @@ int Element_PSTN::update(UPDATE_FUNC_ARGS)
 								{
 									pistonCount += floor((parts[r>>8].temp-268.15)/10);// How many tens of degrees above 0 C, rounded to nearest ten degrees. Can be negative.
 								}
-							} else {
+							}
+							else if (nxx==0 && nyy==0)
+							{
+								// compatibility with BAD THINGS: starting PSTN layered underneath other particles
+								// (in v90, it started scanning from the neighbouring particle, so could not break out of loop at offset=(0,0))
+								pistonCount += floor((parts[i].temp-268.15)/10);
+								continue;
+							}
+							else
+							{
 								pistonEndX = x+nxx;
 								pistonEndY = y+nyy;
 								foundEnd = true;

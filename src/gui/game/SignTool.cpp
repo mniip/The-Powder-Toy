@@ -99,7 +99,7 @@ public:
 };
 
 SignWindow::SignWindow(SignTool * tool_, Simulation * sim_, int signID_, ui::Point position_):
-	ui::Window(ui::Point(-1, -1), ui::Point(200, 87)),
+	ui::Window(ui::Point(-1, -1), ui::Point(250, 87)),
 	tool(tool_),
 	movingSign(NULL),
 	signMoving(false),
@@ -129,14 +129,16 @@ SignWindow::SignWindow(SignTool * tool_, Simulation * sim_, int signID_, ui::Poi
 	justification = new ui::DropDown(ui::Point(52, 48), ui::Point(50, 16));
 	AddComponent(justification);
 	justification->AddOption(std::pair<std::string, int>("\x9D Left", (int)sign::Left));
-	justification->AddOption(std::pair<std::string, int>("\x9E Centre", (int)sign::Centre));
+	justification->AddOption(std::pair<std::string, int>("\x9E Middle", (int)sign::Middle));
 	justification->AddOption(std::pair<std::string, int>("\x9F Right", (int)sign::Right));
+	justification->AddOption(std::pair<std::string, int>("   None", (int)sign::None));
 	justification->SetOption(1);
 	justification->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	
 	textField = new ui::Textbox(ui::Point(8, 25), ui::Point(Size.X-16, 17), "", "[message]");
 	textField->Appearance.HorizontalAlign = ui::Appearance::AlignLeft;
 	textField->Appearance.VerticalAlign = ui::Appearance::AlignMiddle;
+	textField->SetLimit(45);
 	textField->SetActionCallback(new SignTextAction(this));
 	AddComponent(textField);
 	FocusComponent(textField);
@@ -182,7 +184,7 @@ void SignWindow::DoDraw()
 		char type = 0;
 		Graphics * g = ui::Engine::Ref().g;
 		std::string text = currentSign.getText(sim);
-		splitsign(currentSign.text.c_str(), &type);
+		sign::splitsign(currentSign.text.c_str(), &type);
 		currentSign.pos(text, x, y, w, h);
 		g->clearrect(x, y, w+1, h);
 		g->drawrect(x, y, w+1, h, 192, 192, 192, 255);
@@ -193,24 +195,27 @@ void SignWindow::DoDraw()
 		else
 			g->drawtext(x+3, y+3, text, 0, 191, 255, 255);
 
-		x = currentSign.x;
-		y = currentSign.y;
-		dx = 1 - currentSign.ju;
-		dy = (currentSign.y > 18) ? -1 : 1;
-#ifdef OGLR
-		glBegin(GL_LINES);
-		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		glVertex2i(x, y);
-		glVertex2i(x+(dx*4), y+(dy*4));
-		glEnd();
-#else
-		for (int j=0; j<4; j++)
+		if (currentSign.ju != sign::None)
 		{
-			g->blendpixel(x, y, 192, 192, 192, 255);
-			x+=dx;
-			y+=dy;
-		}
+			x = currentSign.x;
+			y = currentSign.y;
+			dx = 1 - currentSign.ju;
+			dy = (currentSign.y > 18) ? -1 : 1;
+#ifdef OGLR
+			glBegin(GL_LINES);
+			glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+			glVertex2i(x, y);
+			glVertex2i(x+(dx*4), y+(dy*4));
+			glEnd();
+#else
+			for (int j=0; j<4; j++)
+			{
+				g->blendpixel(x, y, 192, 192, 192, 255);
+				x+=dx;
+				y+=dy;
+			}
 #endif
+		}
 	}
 	if(!signMoving)
 	{

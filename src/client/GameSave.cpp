@@ -51,6 +51,7 @@ originalData(save.originalData)
 		blockHeight = save.blockHeight;
 	}
 	particlesCount = save.particlesCount;
+	fromNewerVersion = false;
 }
 
 GameSave::GameSave(int width, int height)
@@ -63,6 +64,7 @@ GameSave::GameSave(int width, int height)
 	fanVelYPtr = NULL;
 	particles = NULL;
 
+	fromNewerVersion = false;
 	hasOriginalData = false;
 	expanded = true;
 	setSize(width, height);
@@ -81,6 +83,7 @@ GameSave::GameSave(std::vector<char> data)
 	fanVelYPtr = NULL;
 	particles = NULL;
 
+	fromNewerVersion = false;
 	expanded = false;
 	hasOriginalData = true;
 	originalData = data;
@@ -113,6 +116,7 @@ GameSave::GameSave(std::vector<unsigned char> data)
 	fanVelYPtr = NULL;
 	particles = NULL;
 
+	fromNewerVersion = false;
 	expanded = false;
 	hasOriginalData = true;
 	originalData = std::vector<char>(data.begin(), data.end());
@@ -145,6 +149,7 @@ GameSave::GameSave(char * data, int dataSize)
 	fanVelYPtr = NULL;
 	particles = NULL;
 
+	fromNewerVersion = false;
 	expanded = false;
 	hasOriginalData = true;
 	originalData = std::vector<char>(data, data+dataSize);
@@ -246,6 +251,8 @@ void GameSave::read(char * data, int dataSize)
 #ifdef DEBUG
 			std::cout << "Reading OPS..." << std::endl;
 #endif
+			if (data[3] != '1')
+				throw ParseException(ParseException::WrongVersion, "Save format from newer version");
 			readOPS(data, dataSize);
 		}
 		else
@@ -432,6 +439,11 @@ void GameSave::Transform(matrix2d transform, vector2d translate)
 	fanVelYPtr = (float*)fanVelYPtrNew;
 }
 
+void bson_error_handler(const char *err)
+{
+	throw ParseException(ParseException::Corrupt, "BSON error when parsing save");
+}
+
 void GameSave::readOPS(char * data, int dataLength)
 {
 	unsigned char * inputData = (unsigned char*)data, *bsonData = NULL, *partsData = NULL, *partsPosData = NULL, *fanData = NULL, *wallData = NULL, *soapLinkData = NULL;
@@ -456,15 +468,18 @@ void GameSave::readOPS(char * data, int dataLength)
 	fullH = blockH*CELL;
 
 	//From newer version
-	if(savedVersion > SAVE_VERSION)
-		throw ParseException(ParseException::WrongVersion, "Save from newer version");
+	if (savedVersion > SAVE_VERSION)
+	{
+		fromNewerVersion = true;
+		//throw ParseException(ParseException::WrongVersion, "Save from newer version");
+	}
 
 	//Incompatible cell size
-	if(inputData[5] > CELL)
+	if (inputData[5] > CELL)
 		throw ParseException(ParseException::InvalidDimensions, "Incorrect CELL size");
 
 	//Too large/off screen
-	if(blockX+blockW > XRES/CELL || blockY+blockH > YRES/CELL)
+	if (blockX+blockW > XRES/CELL || blockY+blockH > YRES/CELL)
 		throw ParseException(ParseException::InvalidDimensions, "Save too large");
 
 	setSize(blockW, blockH);
@@ -476,11 +491,11 @@ void GameSave::readOPS(char * data, int dataLength)
 	
 	//Check for overflows, don't load saves larger than 200MB
 	unsigned int toAlloc = bsonDataLen+1;
-	if(toAlloc > 209715200 || !toAlloc)
+	if (toAlloc > 209715200 || !toAlloc)
 		throw ParseException(ParseException::InvalidDimensions, "Save data too large, refusing");
 		
 	bsonData = (unsigned char*)malloc(toAlloc);
-	if(!bsonData)
+	if (!bsonData)
 		throw ParseException(ParseException::InternalError, "Unable to allocate memory");
 
 	//Make sure bsonData is null terminated, since all string functions need null terminated strings
@@ -490,7 +505,8 @@ void GameSave::readOPS(char * data, int dataLength)
 	if (BZ2_bzBuffToBuffDecompress((char*)bsonData, &bsonDataLen, (char*)(inputData+12), inputDataLen-12, 0, 0))
 		throw ParseException(ParseException::Corrupt, "Unable to decompress");
 
-	bson_init_data(&b, (char*)bsonData);
+	set_bson_err_handler(bson_error_handler);
+	bson_init_data_size(&b, (char*)bsonData, bsonDataLen);
 	bson_iterator_init(&iter, &b);
 
 	std::vector<sign> tempSigns;
@@ -517,7 +533,7 @@ void GameSave::readOPS(char * data, int dataLength)
 							{
 								if(strcmp(bson_iterator_key(&signiter), "text")==0 && bson_iterator_type(&signiter)==BSON_STRING)
 								{
-									tempSign.text = format::CleanString(bson_iterator_string(&signiter), 255);
+									tempSign.text = format::CleanString(bson_iterator_string(&signiter), true, true, true).substr(0, 45);
 								}
 								else if(strcmp(bson_iterator_key(&signiter), "justification")==0 && bson_iterator_type(&signiter)==BSON_INT)
 								{
@@ -711,6 +727,41 @@ void GameSave::readOPS(char * data, int dataLength)
 				}
 			}
 		}
+		else if (!strcmp(bson_iterator_key(&iter), "minimumVersion"))
+		{
+			if (bson_iterator_type(&iter) == BSON_OBJECT)
+			{
+				int major = INT_MAX, minor = INT_MAX;
+				bson_iterator subiter;
+				bson_iterator_subiterator(&iter, &subiter);
+				while (bson_iterator_next(&subiter))
+				{
+					if (bson_iterator_type(&subiter) == BSON_INT)
+					{
+						if (!strcmp(bson_iterator_key(&subiter), "major"))
+							major = bson_iterator_int(&subiter);
+						else if (!strcmp(bson_iterator_key(&subiter), "minor"))
+							minor = bson_iterator_int(&subiter);
+						else
+							fprintf(stderr, "Wrong type for %s\n", bson_iterator_key(&iter));
+					}
+				}
+#ifdef SNAPSHOT
+				if (major > FUTURE_SAVE_VERSION || (major == FUTURE_SAVE_VERSION && minor > FUTURE_MINOR_VERSION))
+#else
+				if (major > SAVE_VERSION || (major == SAVE_VERSION && minor > MINOR_VERSION))
+#endif
+				{
+					std::stringstream errorMessage;
+					errorMessage << "Save from a newer version: Requires version " << major << "." << minor;
+					throw ParseException(ParseException::WrongVersion, errorMessage.str());
+				}
+			}
+			else
+			{
+				fprintf(stderr, "Wrong type for %s\n", bson_iterator_key(&iter));
+			}
+		}
 	}
 
 	//Read wall and fan data
@@ -750,7 +801,7 @@ void GameSave::readOPS(char * data, int dataLength)
 				if (blockMap[y][x]==O_WL_ALLOWAIR)
 					blockMap[y][x]=WL_ALLOWAIR;
 				if (blockMap[y][x]==O_WL_ALLOWSOLID)
-					blockMap[y][x]=WL_ALLOWSOLID;
+					blockMap[y][x]=WL_ALLOWPOWDER;
 				if (blockMap[y][x]==O_WL_ALLOWALLELEC)
 					blockMap[y][x]=WL_ALLOWALLELEC;
 				if (blockMap[y][x]==O_WL_EHOLE)
@@ -1027,6 +1078,35 @@ void GameSave::readOPS(char * data, int dataLength)
 							particles[newIndex].tmp = 1;
 						}
 						break;
+					case PT_DLAY:
+						// correct DLAY temperature in older saves
+						// due to either the +.5f now done in DLAY (higher temps), or rounding errors in the old DLAY code (room temperature temps),
+						// the delay in all DLAY from older versions will always be one greater than it should
+						if (savedVersion < 91)
+						{
+							particles[newIndex].temp = particles[newIndex].temp - 1.0f;
+						}
+						break;
+					case PT_CRAY:
+						if (savedVersion < 91)
+						{
+							if (particles[newIndex].tmp2)
+							{
+								particles[newIndex].ctype |= particles[newIndex].tmp2<<8;
+								particles[newIndex].tmp2 = 0;
+							}
+						}
+						break;
+					case PT_CONV:
+						if (savedVersion < 91)
+						{
+							if (particles[newIndex].tmp)
+							{
+								particles[newIndex].ctype |= particles[newIndex].tmp<<8;
+								particles[newIndex].tmp = 0;
+							}
+						}
+						break;
 					}
 					//note: PSv was used in version 77.0 and every version before, add something in PSv too if the element is that old
 					newIndex++;
@@ -1075,17 +1155,13 @@ void GameSave::readOPS(char * data, int dataLength)
 fail:
 	//Clean up everything
 	bson_destroy(&b);
-	if(freeIndices)
-		free(freeIndices);
-	if(partsSimIndex)
-		free(partsSimIndex);
+	free(freeIndices);
+	free(partsSimIndex);
 	throw ParseException(ParseException::Corrupt, "Save data corrupt");
 fin:
 	bson_destroy(&b);
-	if(freeIndices)
-		free(freeIndices);
-	if(partsSimIndex)
-		free(partsSimIndex);
+	free(freeIndices);
+	free(partsSimIndex);
 }
 
 void GameSave::readPSv(char * data, int dataLength)
@@ -1246,7 +1322,7 @@ void GameSave::readPSv(char * data, int dataLength)
 				else if (blockMap[y][x]==9)
 					blockMap[y][x]=WL_ALLOWAIR;
 				else if (blockMap[y][x]==10)
-					blockMap[y][x]=WL_ALLOWSOLID;
+					blockMap[y][x]=WL_ALLOWPOWDER;
 				else if (blockMap[y][x]==11)
 					blockMap[y][x]=WL_ALLOWALLELEC;
 				else if (blockMap[y][x]==12)
@@ -1280,7 +1356,7 @@ void GameSave::readPSv(char * data, int dataLength)
 					else if (blockMap[y][x]==O_WL_ALLOWAIR)
 						blockMap[y][x]=WL_ALLOWAIR;
 					else if (blockMap[y][x]==O_WL_ALLOWSOLID)
-						blockMap[y][x]=WL_ALLOWSOLID;
+						blockMap[y][x]=WL_ALLOWPOWDER;
 					else if (blockMap[y][x]==O_WL_ALLOWALLELEC)
 						blockMap[y][x]=WL_ALLOWALLELEC;
 					else if (blockMap[y][x]==O_WL_EHOLE)
@@ -1683,6 +1759,14 @@ void GameSave::readPSv(char * data, int dataLength)
 			{
 				if (particles[i-1].type == PT_VINE)
 					particles[i-1].tmp = 1;
+				else if (particles[i-1].type == PT_CONV)
+				{
+					if (particles[i-1].tmp)
+					{
+						particles[i-1].ctype |= particles[i-1].tmp<<8;
+						particles[i-1].tmp = 0;
+					}
+				}
 			}
 		}
 	}
@@ -1709,7 +1793,7 @@ void GameSave::readPSv(char * data, int dataLength)
 			x = 254;
 		memcpy(tempSignText, d+p, x);
 		tempSignText[x] = 0;
-		tempSign.text = tempSignText;
+		tempSign.text = format::CleanString(tempSignText, true, true, true).substr(0, 45);
 		tempSigns.push_back(tempSign);
 		p += x;
 	}
@@ -1760,6 +1844,12 @@ void GameSave::readPSv(char * data, int dataLength)
 	}
 }
 
+// restrict the minimum version this save can be opened with
+#define RESTRICTVERSION(major, minor) if ((major) > minimumMajorVersion || (((major) == minimumMajorVersion && (minor) > minimumMinorVersion))) {\
+	minimumMajorVersion = major;\
+	minimumMinorVersion = minor;\
+}
+
 char * GameSave::serialiseOPS(unsigned int & dataLength)
 {
 	//Particle *particles = sim->parts;
@@ -1771,6 +1861,10 @@ char * GameSave::serialiseOPS(unsigned int & dataLength)
 	int blockX, blockY, blockW, blockH, fullX, fullY, fullW, fullH;
 	int x, y, i, wallDataFound = 0;
 	int posCount, signsCount;
+	// minimum version this save is compatible with
+	// when building, this number may be increased depending on what elements are used
+	// or what properties are detected
+	int minimumMajorVersion = 90, minimumMinorVersion = 2;
 	bson b;
 
 	std::fill(elementCount, elementCount+PT_NUM, 0);
@@ -1914,13 +2008,13 @@ char * GameSave::serialiseOPS(unsigned int & dataLength)
 				//Store temperature as an offset of 21C(294.15K) or go into a 16byte int and store the whole thing
 				if(fabs(particles[i].temp-294.15f)<127)
 				{
-					tempTemp = (particles[i].temp-294.15f);
+					tempTemp = floor(particles[i].temp-294.15f+0.5f);
 					partsData[partsDataLen++] = tempTemp;
 				}
 				else
 				{
 					fieldDesc |= 1;
-					tempTemp = particles[i].temp;
+					tempTemp = (int)(particles[i].temp+0.5f);
 					partsData[partsDataLen++] = tempTemp;
 					partsData[partsDataLen++] = tempTemp >> 8;
 				}
@@ -2031,6 +2125,22 @@ char * GameSave::serialiseOPS(unsigned int & dataLength)
 				partsData[fieldDescLoc] = fieldDesc;
 				partsData[fieldDescLoc+1] = fieldDesc>>8;
 
+				if (particles[i].type == PT_RPEL && particles[i].ctype)
+				{
+					RESTRICTVERSION(91, 4);
+				}
+				else if (particles[i].type == PT_NWHL && particles[i].tmp)
+				{
+					RESTRICTVERSION(91, 5);
+				}
+#ifdef SNAPSHOT
+				if (particles[i].type == PT_E180 || particles[i].type == PT_E181 || particles[i].type == PT_E182)
+				{
+					RESTRICTVERSION(92, 0);
+					fromNewerVersion = true;
+				}
+#endif
+
 				//Get the pmap entry for the next particle in the same position
 				i = partsPosLink[i];
 			}
@@ -2090,9 +2200,14 @@ char * GameSave::serialiseOPS(unsigned int & dataLength)
 	bson_append_int(&b, "minorVersion", MINOR_VERSION);
 	bson_append_int(&b, "buildNum", BUILD_NUM);
 	bson_append_int(&b, "snapshotId", SNAPSHOT_ID);
+	bson_append_int(&b, "modId", MOD_ID);
 	bson_append_string(&b, "releaseType", IDENT_RELTYPE);
 	bson_append_string(&b, "platform", IDENT_PLATFORM);
 	bson_append_string(&b, "builtType", IDENT_BUILD);
+	bson_append_finish_object(&b);
+	bson_append_start_object(&b, "minimumVersion");
+	bson_append_int(&b, "major", minimumMajorVersion);
+	bson_append_int(&b, "minor", minimumMinorVersion);
 	bson_append_finish_object(&b);
 	
 
@@ -2191,28 +2306,17 @@ char * GameSave::serialiseOPS(unsigned int & dataLength)
 
 fin:
 	bson_destroy(&b);
-	if(partsData)
-		free(partsData);
-	if(wallData)
-		free(wallData);
-	if(fanData)
-		free(fanData);
-	if (elementCount)
-		delete[] elementCount;
-	if (partsSaveIndex)
-		free(partsSaveIndex);
-	if (soapLinkData)
-		free(soapLinkData);
-	if (partsPosData)
-		free(partsPosData);
-	if (partsPosFirstMap)
-		free(partsPosFirstMap);
-	if (partsPosLastMap)
-		free(partsPosLastMap);
-	if (partsPosCount)
-		free(partsPosCount);
-	if (partsPosLink)
-		free(partsPosLink);
+	free(partsData);
+	free(wallData);
+	free(fanData);
+	delete[] elementCount;
+	free(partsSaveIndex);
+	free(soapLinkData);
+	free(partsPosData);
+	free(partsPosFirstMap);
+	free(partsPosLastMap);
+	free(partsPosCount);
+	free(partsPosLink);
 
 	return (char*)outputData;
 }

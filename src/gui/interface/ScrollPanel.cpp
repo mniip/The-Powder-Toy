@@ -33,7 +33,7 @@ int ScrollPanel::GetScrollLimit()
 void ScrollPanel::SetScrollPosition(int position)
 {
 	offsetY = position;
-	ViewportPosition.Y = position;
+	ViewportPosition.Y = -position;
 }
 
 void ScrollPanel::XOnMouseWheelInside(int localx, int localy, int d)
@@ -60,7 +60,7 @@ void ScrollPanel::Draw(const Point& screenPos)
 		}
 
 		g->fillrect(screenPos.X+(Size.X-scrollBarWidth), screenPos.Y, scrollBarWidth, Size.Y, 125, 125, 125, 100);
-		g->fillrect(screenPos.X+(Size.X-scrollBarWidth), screenPos.Y+scrollPos, scrollBarWidth, scrollHeight, 255, 255, 255, 255);
+		g->fillrect(screenPos.X+(Size.X-scrollBarWidth), screenPos.Y+scrollPos, scrollBarWidth, scrollHeight+1, 255, 255, 255, 255);
 	}
 }
 

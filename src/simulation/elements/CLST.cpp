@@ -8,7 +8,7 @@ Element_CLST::Element_CLST()
 	MenuVisible = 1;
 	MenuSection = SC_POWDERS;
 	Enabled = 1;
-	
+
 	Advection = 0.7f;
 	AirDrag = 0.02f * CFDS;
 	AirLoss = 0.94f;
@@ -18,21 +18,20 @@ Element_CLST::Element_CLST()
 	Diffusion = 0.00f;
 	HotAir = 0.000f	* CFDS;
 	Falldown = 1;
-	
+
 	Flammable = 0;
 	Explosive = 0;
 	Meltable = 2;
 	Hardness = 2;
-	
+
 	Weight = 55;
-	
+
 	Temperature = R_TEMP+0.0f	+273.15f;
 	HeatConduct = 70;
 	Description = "Clay dust. Produces paste when mixed with water.";
-	
-	State = ST_SOLID;
+
 	Properties = TYPE_PART;
-	
+
 	LowPressure = IPL;
 	LowPressureTransition = NT;
 	HighPressure = IPH;
@@ -41,14 +40,14 @@ Element_CLST::Element_CLST()
 	LowTemperatureTransition = NT;
 	HighTemperature = 1256.0f;
 	HighTemperatureTransition = PT_LAVA;
-	
+
 	Update = &Element_CLST::update;
 	Graphics = &Element_CLST::graphics;
 }
 
 //#TPT-Directive ElementHeader Element_CLST static int update(UPDATE_FUNC_ARGS)
 int Element_CLST::update(UPDATE_FUNC_ARGS)
- {
+{
 	int r, rx, ry;
 	float cxy = 0;
 	for (rx=-2; rx<3; rx++)
@@ -62,7 +61,7 @@ int Element_CLST::update(UPDATE_FUNC_ARGS)
 				{
 					if (!(rand()%1500))
 					{
-						sim->part_change_type(i,x,y,PT_PSTS);
+						sim->create_part(i, x, y, PT_PSTS);
 						sim->kill_part(r>>8);
 					}
 				}
@@ -93,10 +92,10 @@ int Element_CLST::update(UPDATE_FUNC_ARGS)
 int Element_CLST::graphics(GRAPHICS_FUNC_ARGS)
 
 {
-	int z = cpart->tmp - 5;//speckles!
-	*colr += z * 16;
-	*colg += z * 16;
-	*colb += z * 16;
+	int z = (cpart->tmp - 5) * 16;//speckles!
+	*colr += z;
+	*colg += z;
+	*colb += z;
 	return 0;
 }
 

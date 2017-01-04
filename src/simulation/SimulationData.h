@@ -14,10 +14,11 @@
 #define SC_SPECIAL 11
 #define SC_LIFE 12
 #define SC_TOOL 13
-#define SC_DECO 14
-#define SC_CRACKER 15
-#define SC_CRACKER2 16
-#define SC_TOTAL 15
+#define SC_FAVORITES 14
+#define SC_DECO 15
+#define SC_CRACKER 16
+#define SC_CRACKER2 17
+#define SC_TOTAL 16
 
 #define O_WL_WALLELEC	122
 #define O_WL_EWALL		123
@@ -48,27 +49,28 @@
 #define WL_DESTROYALL	7
 #define WL_WALL			8
 #define WL_ALLOWAIR		9
-#define WL_ALLOWSOLID	10
+#define WL_ALLOWPOWDER	10
 #define WL_ALLOWALLELEC	11
 #define WL_EHOLE		12
 #define WL_ALLOWGAS		13
 #define WL_GRAV			14
 #define WL_ALLOWENERGY	15
 #define WL_BLOCKAIR		16
+#define WL_ERASEALL		17
 #define WL_FLOODHELPER	255
 
-#define UI_WALLCOUNT 17
+#define UI_WALLCOUNT 18
 
 #define OLD_SPC_AIR 236
 #define SPC_AIR 256
 
 #define DECO_DRAW	0
-#define DECO_ADD	1
-#define DECO_SUBTRACT	2
-#define DECO_MULTIPLY	3
-#define DECO_DIVIDE	4
-#define DECO_SMUDGE 5
-#define DECO_CLEAR	6
+#define DECO_CLEAR	1
+#define DECO_ADD	2
+#define DECO_SUBTRACT	3
+#define DECO_MULTIPLY	4
+#define DECO_DIVIDE	5
+#define DECO_SMUDGE 6
 
 //Old IDs for GOL types
 #define GT_GOL 78

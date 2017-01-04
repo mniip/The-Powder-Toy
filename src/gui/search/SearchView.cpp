@@ -11,6 +11,7 @@
 #include "gui/interface/Spinner.h"
 #include "Misc.h"
 #include "Format.h"
+#include "PowderToy.h"
 
 SearchView::SearchView():
 	ui::Window(ui::Point(0, 0), ui::Point(WINDOWW, WINDOWH)),
@@ -26,7 +27,7 @@ SearchView::SearchView():
 	Client::Ref().AddListener(this);
 
 	nextButton = new ui::Button(ui::Point(WINDOWW-52, WINDOWH-18), ui::Point(50, 16), "Next \x95");
-	previousButton = new ui::Button(ui::Point(1, WINDOWH-18), ui::Point(50, 16), "\x96 Prev");
+	previousButton = new ui::Button(ui::Point(2, WINDOWH-18), ui::Point(50, 16), "\x96 Prev");
 	tagsLabel  = new ui::Label(ui::Point(270, WINDOWH-18), ui::Point(WINDOWW-540, 16), "\boPopular Tags:");
 	motdLabel  = new ui::RichLabel(ui::Point(51, WINDOWH-18), ui::Point(WINDOWW-102, 16), Client::Ref().GetMessageOfTheDay());
 
@@ -278,7 +279,7 @@ void SearchView::textChanged()
 		pageTextbox->SetText(format::NumberToString(pageCount));
 	changed = true;
 #ifdef USE_SDL
-	lastChanged = SDL_GetTicks()+600;
+	lastChanged = GetTicks()+600;
 #endif
 }
 
@@ -765,7 +766,7 @@ void SearchView::OnTick(float dt)
 {
 	c->Update();
 #ifdef USE_SDL
-	if (changed && lastChanged < SDL_GetTicks())
+	if (changed && lastChanged < GetTicks())
 	{
 		changed = false;
 		c->SetPage(std::max(format::StringToNumber<int>(pageTextbox->GetText()), 0));
@@ -784,14 +785,14 @@ void SearchView::OnMouseWheel(int x, int y, int d)
 }
 void SearchView::OnKeyPress(int key, Uint16 character, bool shift, bool ctrl, bool alt)
 {
-	if (key == KEY_ESCAPE)
+	if (key == SDLK_ESCAPE)
 		c->Exit();
-	else if (key == KEY_LCTRL || key == KEY_RCTRL)
+	else if (key == SDLK_LCTRL || key == SDLK_RCTRL)
 		c->InstantOpen(true);
 }
 
 void SearchView::OnKeyRelease(int key, Uint16 character, bool shift, bool ctrl, bool alt)
 {
-	if (key == KEY_LCTRL || key == KEY_RCTRL)
+	if (key == SDLK_LCTRL || key == SDLK_RCTRL)
 		c->InstantOpen(false);
 }

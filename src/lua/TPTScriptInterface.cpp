@@ -2,11 +2,11 @@
 #include <iostream>
 #include <string>
 #include <deque>
-#include <string.h>
+#include <cstring>
 #ifdef MACOSX
 #include <strings.h>
 #endif
-#include <stdlib.h>
+#include <cstdlib>
 #include "TPTScriptInterface.h"
 #include "gui/game/GameModel.h"
 #include "simulation/Air.h"
@@ -80,48 +80,53 @@ ValueType TPTScriptInterface::testType(std::string word)
 		return TypeFunction;
 	else if (word == "quit")
 		return TypeFunction;
+
 	//Basic type
-			for (i = 0; i < word.length(); i++)
-			{
-				if (!(rawWord[i] >= '0' && rawWord[i] <= '9') && !(rawWord[i] == '-' && !i))
-				{
-					if (rawWord[i] == '.' && rawWord[i+1])
-						goto parseFloat;
-					else if (rawWord[i] == ',' && rawWord[i+1] >= '0' && rawWord[i+1] <= '9')
-						goto parsePoint;
-					else if ((rawWord[i] == '#' || (i && rawWord[i-1] == '0' && rawWord[i] == 'x')) &&
-						((rawWord[i+1] >= '0' && rawWord[i+1] <= '9')
-						|| (rawWord[i+1] >= 'a' && rawWord[i+1] <= 'f')
-						|| (rawWord[i+1] >= 'A' && rawWord[i+1] <= 'F')))
-						goto parseNumberHex;
-					else
-						goto parseString;
-				}
-			}
-			return TypeNumber;
-	parseFloat:
-			for (i++; i < word.length(); i++)
-				if (!((rawWord[i] >= '0' && rawWord[i] <= '9') || (rawWord[i] >= 'a' && rawWord[i] <= 'f') || (rawWord[i] >= 'A' && rawWord[i] <= 'F')))
-				{
-					goto parseString;
-				}
-			return TypeFloat;
-	parseNumberHex:
-			for (i++; i < word.length(); i++)
-				if (!((rawWord[i] >= '0' && rawWord[i] <= '9') || (rawWord[i] >= 'a' && rawWord[i] <= 'f') || (rawWord[i] >= 'A' && rawWord[i] <= 'F')))
-				{
-					goto parseString;
-				}
-			return TypeNumber;
-	parsePoint:
-			for (i++; i < word.length(); i++)
-				if (!(rawWord[i] >= '0' && rawWord[i] <= '9'))
-				{
-					goto parseString;
-				}
-			return TypePoint;
-	parseString:
-			return TypeString;
+	for (i = 0; i < word.length(); i++)
+	{
+		if (!(rawWord[i] >= '0' && rawWord[i] <= '9') && !(rawWord[i] == '-' && !i))
+		{
+			if (rawWord[i] == '.' && rawWord[i+1])
+				goto parseFloat;
+			else if (rawWord[i] == ',' && rawWord[i+1] >= '0' && rawWord[i+1] <= '9')
+				goto parsePoint;
+			else if ((rawWord[i] == '#' || (i && rawWord[i-1] == '0' && rawWord[i] == 'x')) &&
+				((rawWord[i+1] >= '0' && rawWord[i+1] <= '9')
+				|| (rawWord[i+1] >= 'a' && rawWord[i+1] <= 'f')
+				|| (rawWord[i+1] >= 'A' && rawWord[i+1] <= 'F')))
+				goto parseNumberHex;
+			else
+				goto parseString;
+		}
+	}
+	return TypeNumber;
+
+parseFloat:
+	for (i++; i < word.length(); i++)
+		if (!((rawWord[i] >= '0' && rawWord[i] <= '9')))
+		{
+			goto parseString;
+		}
+	return TypeFloat;
+
+parseNumberHex:
+	for (i++; i < word.length(); i++)
+		if (!((rawWord[i] >= '0' && rawWord[i] <= '9') || (rawWord[i] >= 'a' && rawWord[i] <= 'f') || (rawWord[i] >= 'A' && rawWord[i] <= 'F')))
+		{
+			goto parseString;
+		}
+	return TypeNumber;
+
+parsePoint:
+	for (i++; i < word.length(); i++)
+		if (!(rawWord[i] >= '0' && rawWord[i] <= '9'))
+		{
+			goto parseString;
+		}
+	return TypePoint;
+
+parseString:
+	return TypeString;
 }
 
 int TPTScriptInterface::parseNumber(char * stringData)
@@ -452,7 +457,13 @@ AnyType TPTScriptInterface::tptS_create(std::deque<std::string> * words)
 	if(tempPoint.X<0 || tempPoint.Y<0 || tempPoint.Y >= YRES || tempPoint.X >= XRES)
 				throw GeneralException("Invalid position");
 
-	int returnValue = sim->create_part(-1, tempPoint.X, tempPoint.Y, type);
+	int v = -1;
+	if (type>>8)
+	{
+		v = type>>8;
+		type = type&0xFF;
+	}
+	int returnValue = sim->create_part(-1, tempPoint.X, tempPoint.Y, type, v);
 
 	return NumberType(returnValue);
 }
@@ -560,14 +571,7 @@ AnyType TPTScriptInterface::tptS_reset(std::deque<std::string> * words)
 	}
 	else if (resetStr == "sparks")
 	{
-		for (int i = 0; i < NPART; i++)
-		{
-			if (sim->parts[i].type == PT_SPRK)
-			{
-				sim->parts[i].type = sim->parts[i].ctype;
-				sim->parts[i].life = 4;
-			}
-		}
+		c->ResetSpark();
 	}
 	else if (resetStr == "temp")
 	{

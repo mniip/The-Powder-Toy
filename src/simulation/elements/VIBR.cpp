@@ -30,7 +30,6 @@ Element_VIBR::Element_VIBR()
 	HeatConduct = 251;
 	Description = "Vibranium. Stores energy and releases it in violent explosions.";
 
-	State = ST_SOLID;
 	Properties = TYPE_SOLID|PROP_LIFE_DEC;
 
 	LowPressure = IPL;
@@ -81,9 +80,9 @@ int Element_VIBR::update(UPDATE_FUNC_ARGS) {
 	else //if it is exploding
 	{
 		//Release sparks before explode
+		rndstore = rand();
 		if (parts[i].life < 300)
 		{
-			rndstore = rand();
 			rx = rndstore%3-1;
 			ry = (rndstore>>2)%3-1;
 			rndstore = rndstore >> 4;

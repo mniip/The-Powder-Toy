@@ -22,16 +22,17 @@
 
 #include <string>
 #include <sstream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
 #ifndef WIN
 #include <sys/param.h>
 #endif
 #if !defined(MACOSX) && !defined(BSD)
 #include <malloc.h>
 #endif
-#include <time.h>
+#include <ctime>
 #ifdef WIN
 #define _WIN32_WINNT 0x0501
 //#include <iphlpapi.h>
@@ -48,11 +49,12 @@
 #include <netinet/in.h>
 #endif
 
+#include "client/DownloadManager.h"
 #include "Config.h"
 #include "Misc.h"
 #include "HTTP.h"
 #include "MD5.h"
-#include "Misc.h"
+#include "Platform.h"
 
 #ifdef WIN
 #define PERROR SOCKET_ERROR
@@ -79,7 +81,6 @@ typedef SSIZE_T ssize_t;
 
 char * userAgent;
 static int http_up = 0;
-static long http_timeout = 15;
 static int http_use_proxy = 0;
 static struct sockaddr_in http_proxy;
 
@@ -194,7 +195,7 @@ void http_init(char *proxy)
 	}
 	std::stringstream userAgentBuilder;
 	userAgentBuilder << "PowderToy/" << SAVE_VERSION << "." << MINOR_VERSION << " ";
-	userAgentBuilder << "(" << IDENT_PLATFORM << "; " << IDENT_BUILD << "; M0) ";
+	userAgentBuilder << "(" << IDENT_PLATFORM << "; " << IDENT_BUILD << "; M" << MOD_ID << ") ";
 	userAgentBuilder << "TPTPP/" << SAVE_VERSION << "." << MINOR_VERSION << "." << BUILD_NUM << IDENT_RELTYPE << "." << SNAPSHOT_ID;
 	std::string newUserAgent = userAgentBuilder.str();
 	userAgent = new char[newUserAgent.length()+1];
@@ -208,6 +209,7 @@ void http_done(void)
 #ifdef WIN
 	WSACleanup();
 #endif
+	DownloadManager::Ref().Shutdown();
 	http_up = 0;
 }
 
@@ -245,6 +247,12 @@ struct http_ctx
 void *http_async_req_start(void *ctx, const char *uri, const char *data, int dlen, int keep)
 {
 	struct http_ctx *cx = (http_ctx *)ctx;
+	if (cx && time(NULL) - cx->last > http_timeout)
+	{
+		http_force_close(ctx);
+		http_async_req_close(ctx);
+		ctx = NULL;
+	}
 	if (!ctx)
 	{
 		ctx = calloc(1, sizeof(struct http_ctx));
@@ -345,7 +353,7 @@ static void process_header(struct http_ctx *cx, char *str)
 			cx->state = HTS_DONE;
 		return;
 	}
-	if (!strncmp(str, "HTTP/", 5))
+	if (!strncmp(str, "http/", 5))
 	{
 		p = strchr(str, ' ');
 		if (!p)
@@ -358,13 +366,13 @@ static void process_header(struct http_ctx *cx, char *str)
 		cx->ret = atoi(p);
 		return;
 	}
-	if (!strncmp(str, "Content-Length: ", 16))
+	if (!strncmp(str, "content-length: ", 16))
 	{
 		str = eatwhitespace(str+16);
 		cx->contlen = atoi(str);
 		return;
 	}
-	if (!strncmp(str, "Transfer-Encoding: ", 19))
+	if (!strncmp(str, "transfer-encoding: ", 19))
 	{
 		str = eatwhitespace(str+19);
 		if(!strncmp(str, "chunked", 8))
@@ -373,7 +381,7 @@ static void process_header(struct http_ctx *cx, char *str)
 		}
 		return;
 	}
-	if (!strncmp(str, "Connection: ", 12))
+	if (!strncmp(str, "connection: ", 12))
 	{
 		str = eatwhitespace(str+12);
 		if(!strncmp(str, "close", 6))
@@ -420,7 +428,7 @@ static void process_byte(struct http_ctx *cx, char ch)
 				cx->hlen *= 2;
 				cx->hbuf = (char *)realloc(cx->hbuf, cx->hlen);
 			}
-			cx->hbuf[cx->hptr++] = ch;
+			cx->hbuf[cx->hptr++] = tolower(ch);
 		}
 	}
 }
@@ -550,7 +558,7 @@ int http_async_req_status(void *ctx)
 		tmp = send(cx->fd, cx->tbuf+cx->tptr, cx->tlen-cx->tptr, 0);
 		if (tmp==PERROR && PERRNO!=PEAGAIN && PERRNO!=PEINTR)
 			goto fail;
-		if (tmp!=PERROR)
+		if (tmp!=PERROR && tmp)
 		{
 			cx->tptr += tmp;
 			if (cx->tptr == cx->tlen)
@@ -558,7 +566,10 @@ int http_async_req_status(void *ctx)
 				cx->tptr = 0;
 				cx->tlen = 0;
 				if (cx->tbuf)
+				{
 					free(cx->tbuf);
+					cx->tbuf = NULL;
+				}
 				cx->state = HTS_RECV;
 			}
 			cx->last = now;
@@ -570,7 +581,7 @@ int http_async_req_status(void *ctx)
 		tmp = recv(cx->fd, buf, CHUNK, 0);
 		if (tmp==PERROR && PERRNO!=PEAGAIN && PERRNO!=PEINTR)
 			goto fail;
-		if (tmp!=PERROR)
+		if (tmp!=PERROR && tmp)
 		{
 			for (i=0; i<tmp; i++)
 			{
@@ -606,7 +617,7 @@ char *http_async_req_stop(void *ctx, int *ret, int *len)
 
 	if (cx->state != HTS_DONE)
 		while (!http_async_req_status(ctx))
-			millisleep(1);
+			Platform::Millisleep(1);
 
 	if (cx->host)
 	{
@@ -623,6 +634,11 @@ char *http_async_req_stop(void *ctx, int *ret, int *len)
 		free(cx->txd);
 		cx->txd = NULL;
 		cx->txdl = 0;
+	}
+	if (cx->tbuf)
+	{
+		free(cx->tbuf);
+		cx->tbuf = NULL;
 	}
 	if (cx->hbuf)
 	{
@@ -676,6 +692,12 @@ void http_async_get_length(void *ctx, int *total, int *done)
 		*total = cx->contlen;
 }
 
+void http_force_close(void *ctx)
+{
+	struct http_ctx *cx = (struct http_ctx*)ctx;
+	cx->state = HTS_DONE;
+}
+
 void http_async_req_close(void *ctx)
 {
 	struct http_ctx *cx = (http_ctx *)ctx;
@@ -684,11 +706,9 @@ void http_async_req_close(void *ctx)
 	{
 		cx->keep = 1;
 		tmp = http_async_req_stop(ctx, NULL, NULL);
-		if (tmp)
-			free(tmp);
+		free(tmp);
 	}
-	if (cx->fdhost)
-		free(cx->fdhost);
+	free(cx->fdhost);
 	PCLOSE(cx->fd);
 	free(ctx);
 }
@@ -713,7 +733,7 @@ void http_auth_headers(void *ctx, const char *user, const char *pass, const char
 	unsigned char hash[16];
 	struct md5_context md5;
 
-	if (user)
+	if (user && strlen(user))
 	{
 		if (pass)
 		{
@@ -733,7 +753,7 @@ void http_auth_headers(void *ctx, const char *user, const char *pass, const char
 			http_async_add_header(ctx, "X-Auth-Hash", tmp);
 			free(tmp);
 		}
-		if (session_id)
+		if (session_id && strlen(session_id))
 		{
 			http_async_add_header(ctx, "X-Auth-User-Id", user);
 			http_async_add_header(ctx, "X-Auth-Session-Key", session_id);
@@ -778,6 +798,9 @@ const char *http_ret_text(int ret)
 {
 	switch (ret)
 	{
+	case 0:
+		return "Status code 0 (bug?)";
+
 	case 100:
 		return "Continue";
 	case 101:
@@ -911,6 +934,98 @@ const char *http_ret_text(int ret)
 		return "Unknown Status Code";
 	}
 }
+
+// Find the boundary used in the multipart POST request
+// the boundary is a string that never appears in any of the parts, ex. 'A92'
+// keeps looking recursively until it finds one
+std::string FindBoundary(std::map<std::string, std::string> parts, std::string boundary)
+{
+	// we only look for a-zA-Z0-9 chars
+	unsigned int map[62];
+	size_t blen = boundary.length();
+	std::fill(&map[0], &map[62], 0);
+	for (std::map<std::string, std::string>::iterator iter = parts.begin(); iter != parts.end(); iter++)
+	{
+		// loop through every character in each part and search for the substring, adding 1 to map for every character found (character after the substring)
+		for (ssize_t j = 0; j < (ssize_t)((*iter).second.length()-blen); j++)
+			if (!blen || (*iter).second.substr(j, blen) == boundary)
+			{
+				unsigned char ch = (*iter).second[j+blen];
+				if (ch >= '0' && ch <= '9')
+					map[ch-'0']++;
+				else if (ch >= 'A' && ch <= 'Z')
+					map[ch-'A'+10]++;
+				else if (ch >= 'a' && ch <= 'z')
+					map[ch-'a'+36]++;
+			}
+	}
+	// find which next character occurs the least (preferably it occurs 0 times which means we have a match)
+	unsigned int lowest = 0;
+	for (unsigned int i = 1; i < 62; i++)
+	{
+		if (!map[lowest])
+			break;
+		if (map[i] < map[lowest])
+			lowest = i;
+	}
+
+	// add the least frequent character to our boundary
+	if (lowest < 10)
+		boundary += '0'+lowest;
+	else if (lowest < 36)
+		boundary += 'A'+(lowest-10);
+	else
+		boundary += 'a'+(lowest-36);
+
+	if (map[lowest])
+		return FindBoundary(parts, boundary);
+	else
+		return boundary;
+}
+
+// Generates a MIME multipart message to be used in POST requests
+// see https://en.wikipedia.org/wiki/MIME#Multipart_messages
+// this function used in Download class, and eventually all http requests
+std::string GetMultipartMessage(std::map<std::string, std::string> parts, std::string boundary)
+{
+	std::stringstream data;
+
+	// loop through each part, adding it
+	for (std::map<std::string, std::string>::iterator iter = parts.begin(); iter != parts.end(); iter++)
+	{
+		std::string name = (*iter).first;
+		std::string value = (*iter).second;
+
+		data << "--" << boundary << "\r\n";
+		data << "Content-transfer-encoding: binary" << "\r\n";
+
+		// colon p
+		size_t colonP = name.find(':');
+		if (colonP != name.npos)
+		{
+			// used to upload files (save data)
+			data << "content-disposition: form-data; name=\"" << name.substr(0, colonP) << "\"";
+			data << "filename=\"" << name.substr(colonP+1) << "\"";
+		}
+		else
+		{
+			data << "content-disposition: form-data; name=\"" << name << "\"";
+		}
+		data << "\r\n\r\n";
+		data << value;
+		data << "\r\n";
+	}
+	data << "--" << boundary << "--\r\n";
+	return data.str();
+}
+
+// add the header needed to make POSTS work
+void http_add_multipart_header(void *ctx, std::string boundary)
+{
+	std::string header = "multipart/form-data; boundary=" + boundary;
+	http_async_add_header(ctx, "Content-type", header.c_str());
+}
+
 char *http_multipart_post(const char *uri, const char *const *names, const char *const *parts, size_t *plens, const char *user, const char *pass, const char *session_id, int *ret, int *len)
 {
 	void *ctx;
@@ -1077,7 +1192,7 @@ retry:
 	if (data)
 	{
 		tmp = (char *)malloc(32+strlen((char *)boundary));
-		sprintf(tmp, "multipart/form-data, boundary=%s", boundary);
+		sprintf(tmp, "multipart/form-data; boundary=%s", boundary);
 		http_async_add_header(ctx, "Content-type", tmp);
 		free(tmp);
 		free(data);
@@ -1088,8 +1203,7 @@ retry:
 	return http_async_req_stop(ctx, ret, len);
 
 fail:
-	if (data)
-		free(data);
+	free(data);
 	if (own_plen)
 		free(plens);
 	if (ret)
@@ -1266,7 +1380,7 @@ retry:
 	if (data)
 	{
 		tmp = (char *)malloc(32+strlen((char *)boundary));
-		sprintf(tmp, "multipart/form-data, boundary=%s", boundary);
+		sprintf(tmp, "multipart/form-data; boundary=%s", boundary);
 		http_async_add_header(ctx, "Content-type", tmp);
 		free(tmp);
 		free(data);
@@ -1278,8 +1392,7 @@ retry:
 	return ctx;
 
 fail:
-	if (data)
-		free(data);
+	free(data);
 	if (own_plen)
 		free(plens);
 	//if (ret)

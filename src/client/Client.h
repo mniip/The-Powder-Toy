@@ -6,12 +6,12 @@
 #include <list>
 
 #include "Config.h"
-#include "Singleton.h"
+#include "common/Singleton.h"
 
 #include "User.h"
 #include "UserInfo.h"
 
-#include "cajun/elements.h"
+#include "json/json.h"
 
 #include "requestbroker/RequestBroker.h"
 
@@ -35,14 +35,15 @@ class UpdateInfo
 public:
 	enum BuildType { Stable, Beta, Snapshot };
 	std::string File;
+	std::string Changelog;
 	int Major;
 	int Minor;
 	int Build;
 	int Time;
 	BuildType Type;
-	UpdateInfo() : File(""), Major(0), Minor(0), Build(0), Time(0), Type(Stable) {}
-	UpdateInfo(int major, int minor, int build, std::string file, BuildType type) : File(file), Major(major), Minor(minor), Build(build), Time(0), Type(type) {}
-	UpdateInfo(int time, std::string file, BuildType type) : File(file), Major(0), Minor(0), Build(0), Time(time), Type(type) {}
+	UpdateInfo() : File(""), Changelog(""), Major(0), Minor(0), Build(0), Time(0), Type(Stable) {}
+	UpdateInfo(int major, int minor, int build, std::string file, std::string changelog, BuildType type) : File(file), Changelog(changelog), Major(major), Minor(minor), Build(build), Time(0), Type(type) {}
+	UpdateInfo(int time, std::string file, std::string changelog, BuildType type) : File(file), Changelog(changelog), Major(0), Minor(0), Build(0), Time(time), Type(type) {}
 };
 
 class RequestListener;
@@ -50,14 +51,16 @@ class ClientListener;
 class Client: public Singleton<Client> {
 private:
 	std::string messageOfTheDay;
-	std::vector<std::pair<std::string, std::string> > serverNotifications; 
+	std::vector<std::pair<std::string, std::string> > serverNotifications;
 
 	void * versionCheckRequest;
+	void * alternateVersionCheckRequest;
+	bool usingAltUpdateServer;
 	bool updateAvailable;
 	UpdateInfo updateInfo;
 
-
 	std::string lastError;
+	bool firstRun;
 
 	std::list<std::string> stampIDs;
 	unsigned lastStampTime;
@@ -73,14 +76,15 @@ private:
 	int activeThumbRequestTimes[IMGCONNS];
 	int activeThumbRequestCompleteTimes[IMGCONNS];
 	std::string activeThumbRequestIDs[IMGCONNS];
-	static std::vector<std::string> explodePropertyString(std::string property);
 	void notifyUpdateAvailable();
 	void notifyAuthUserChanged();
 	void notifyMessageOfTheDay();
 	void notifyNewNotification(std::pair<std::string, std::string> notification);
 
-	//Config file handle
-	json::Object configDocument;
+	// internal preferences handling
+	Json::Value preferences;
+	Json::Value GetPref(Json::Value root, std::string prop, Json::Value defaultValue = Json::nullValue);
+	Json::Value SetPrefHelper(Json::Value root, std::string prop, Json::Value value);
 public:
 
 	std::vector<ClientListener*> listeners;
@@ -108,6 +112,7 @@ public:
 
 	void Initialise(std::string proxyString);
 	void SetProxy(std::string proxy);
+	bool IsFirstRun();
 
 	int MakeDirectory(const char * dirname);
 	bool WriteFile(std::vector<unsigned char> fileData, std::string filename);
@@ -145,11 +150,7 @@ public:
 	std::vector<SaveInfo*> * SearchSaves(int start, int count, std::string query, std::string sort, std::string category, int & resultCount);
 	std::vector<std::pair<std::string, int> > * GetTags(int start, int count, std::string query, int & resultCount);
 
-	std::vector<SaveComment*> * GetComments(int saveID, int start, int count);
 	RequestBroker::Request * GetCommentsAsync(int saveID, int start, int count);
-	
-	Thumbnail * GetPreview(int saveID, int saveDate);
-	Thumbnail * GetThumbnail(int saveID, int saveDate);
 
 	SaveInfo * GetSave(int saveID, int saveDate);
 	RequestBroker::Request * GetSaveAsync(int saveID, int saveDate);
@@ -166,37 +167,27 @@ public:
 	std::string GetLastError() {
 		return lastError;
 	}
+	RequestStatus ParseServerReturn(char *result, int status, bool json);
 	void Tick();
+	bool CheckUpdate(void *updateRequest, bool checkSession);
 	void Shutdown();
 
-	//Force flushing preferences to file on disk.
+	// preferences functions
 	void WritePrefs();
 
-	std::string GetPrefString(std::string property, std::string defaultValue);
-	double GetPrefNumber(std::string property, double defaultValue);
-	int GetPrefInteger(std::string property, int defaultValue);
-	unsigned int GetPrefUInteger(std::string property, unsigned int defaultValue);
-	std::vector<std::string> GetPrefStringArray(std::string property);
-	std::vector<double> GetPrefNumberArray(std::string property);
-	std::vector<int> GetPrefIntegerArray(std::string property);
-	std::vector<unsigned int> GetPrefUIntegerArray(std::string property);
-	std::vector<bool> GetPrefBoolArray(std::string property);
-	bool GetPrefBool(std::string property, bool defaultValue);
+	std::string GetPrefString(std::string prop, std::string defaultValue);
+	double GetPrefNumber(std::string prop, double defaultValue);
+	int GetPrefInteger(std::string prop, int defaultValue);
+	unsigned int GetPrefUInteger(std::string prop, unsigned int defaultValue);
+	bool GetPrefBool(std::string prop, bool defaultValue);
+	std::vector<std::string> GetPrefStringArray(std::string prop);
+	std::vector<double> GetPrefNumberArray(std::string prop);
+	std::vector<int> GetPrefIntegerArray(std::string prop);
+	std::vector<unsigned int> GetPrefUIntegerArray(std::string prop);
+	std::vector<bool> GetPrefBoolArray(std::string prop);
 
-	void SetPref(std::string property, std::string value);
-	void SetPref(std::string property, double value);
-	void SetPref(std::string property, int value);
-	void SetPref(std::string property, unsigned int value);
-	void SetPref(std::string property, std::vector<std::string> value);
-	void SetPref(std::string property, std::vector<double> value);
-	void SetPref(std::string property, std::vector<int> value);
-	void SetPref(std::string property, std::vector<unsigned int> value);
-	void SetPref(std::string property, std::vector<bool> value);
-	void SetPref(std::string property, bool value);
-
-	json::UnknownElement GetPref(std::string property);
-	void setPrefR(std::deque<std::string> tokens, json::UnknownElement & element, json::UnknownElement & value);
-	void SetPref(std::string property, json::UnknownElement & value);
+	void SetPref(std::string prop, Json::Value value);
+	void SetPref(std::string property, std::vector<Json::Value> value);
 };
 
 #endif // CLIENT_H
